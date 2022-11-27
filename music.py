@@ -1,12 +1,6 @@
 #This music bot uses wavelink instead of FFMPEG
 #Current commands:
-#join, leave, play, skip, pause, resume
-
-#Future commands for music:
-#seek, setVolume, listQueue
-
-#Still need to setup logging
-
+#join, leave, play, skip, pause, resume, seek, volume, playskip, next
 import discord
 import secrets
 import os
@@ -51,10 +45,11 @@ async def connect_nodes():
         password='discordTest123'
     )
 
-#Events, load wakelink node, play next song in queue
+#Events, load wavelink node, play next song in queue
 @client.event
 async def on_wavelink_node_ready(node: wavelink.Node):
     print(f'Node: <{node.identifier}> is ready')
+    print(f'Logged in as {node.bot.user} ({node.bot.user.id})')
 
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
@@ -106,6 +101,26 @@ async def play(ctx, *, search: wavelink.YouTubeTrack):
             description=f"Now Playing {search.title}!"
         ))
         await vc.play(search)
+        await vc.set_volume(25)#Set bot volume initially to 25
+
+#Skip current song and play next, ex !playskip blinding lights the weeknd
+@client.command()
+async def playskip(ctx, *, search: wavelink.YouTubeTrack):
+    vc = ctx.voice_client
+    if vc:
+        if vc.is_playing():
+            vc.queue.put_at_front(item = search)
+            await vc.seek(vc.track.length * 1000)
+            await ctx.send("Playing the next song...")
+            await ctx.send(embed=discord.Embed(
+                title=search.title,
+                url=search.uri,
+                description=f"Now Playing {search.title}!"
+            ))
+        else:
+            await ctx.send('The bot is not currently playing anything.')
+    else:
+        await ctx.send('The bot is not connected to a voice channel.')
 
 #Skip current song, ex: !skip
 @client.command()
@@ -149,6 +164,40 @@ async def resume(ctx):
             await ctx.send("Nothing is currently paused.")
     else:
         await ctx.send("The bot is not connected to a voice channel")
+
+#Show whats next in the queue
+@client.command()
+async def next(ctx):
+    vc = ctx.voice_client
+    if vc:
+        await ctx.send(f"The next song is: {vc.queue.get()}")
+    else:
+        await ctx.send("The bot is not connected to a voice channel")
+
+#Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
+@client.command()
+async def seek(ctx, seek = 0):
+    vc = ctx.voice_client
+    val = int(seek)
+    if vc:
+        if vc.is_playing() and not vc.is_paused():
+            await vc.seek(vc.track.length * val)
+            await ctx.send(f"Seeking!")
+        else:
+            await ctx.send("Nothing is currently playing")
+    else:
+        await ctx.send("The bot is not connect to a voice channel.")
+
+#Set volume of bot, ex !volume 1(sets volume of bot to 1)
+@client.command()
+async def volume(ctx, volume):
+    vc = ctx.voice_client
+    val = int(volume)
+    if vc and val > 0 and val <= 100:
+        await vc.set_volume(val)
+        await ctx.send(f"I set my volume to {val}")
+    else:
+        await ctx.send("I need to be in a voice channel to set my volume.")
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
