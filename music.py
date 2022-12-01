@@ -46,16 +46,31 @@ async def connect_nodes():
     )
 
 #Events, load wavelink node, play next song in queue
+#Scan messages to ensure message was sent in #commands chat
 @client.event
 async def on_wavelink_node_ready(node: wavelink.Node):
-    print(f'Node: <{node.identifier}> is ready')
-    print(f'Logged in as {node.bot.user} ({node.bot.user.id})')
+    logger.info(f'Node: <{node.identifier}> is ready')
+    logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
 
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
     if not player.queue.is_empty:
         next_track = player.queue.get()
         await player.play(next_track)
+        logger.info(f'Playing next track: {next_track}')
+    else:
+        logger.info(f'Queue is empty')
+
+@client.event
+async def on_message(message):
+    msg = message.content
+    channel = str(message.channel)
+    if channel == 'commands' or channel == 'test':
+        logger.info(f'Bot command entered, command: {msg}')
+        await client.process_commands(message)
+    elif msg.startswith('!'):
+        logger.info(f'Command entered in wrong channel, deleting: {msg}')
+        await message.delete(delay = 1)
 
 #Join authors voice channel
 @client.command()
@@ -66,10 +81,11 @@ async def join(ctx):
     except AttributeError:
         return await ctx.send('You must be in a voice channel for the bot to connect.')
     if not vc:
-        await ctx.author.voice.channel.connect(cls=CustomPlayer())
+        custom_player = CustomPlayer()
+        vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
+        await vc.set_volume(5)#Set bot volume initially to 5
     else:
         await ctx.send('The bot is already connected to a voice channel')
-
 #Leave voice channel
 @client.command()
 async def leave(ctx):
@@ -77,7 +93,7 @@ async def leave(ctx):
     if vc:
         await vc.disconnect()
     else:
-        ctx.send('The bot is not connected to a voice channel.')
+        await ctx.send('The bot is not connected to a voice channel.')
 
 #Play a song, ex: !play starboy the weeknd
 @client.command()
@@ -101,7 +117,7 @@ async def play(ctx, *, search: wavelink.YouTubeTrack):
             description=f"Now Playing {search.title}!"
         ))
         await vc.play(search)
-        await vc.set_volume(25)#Set bot volume initially to 25
+        logger.info(f'Playing: {search.title}')
 
 #Skip current song and play next, ex !playskip blinding lights the weeknd
 @client.command()
@@ -117,6 +133,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeTrack):
                 url=search.uri,
                 description=f"Now Playing {search.title}!"
             ))
+            logger.info(f'Playskipping: {search.title}')
         else:
             await ctx.send('The bot is not currently playing anything.')
     else:
@@ -134,6 +151,7 @@ async def skip(ctx):
 
         await vc.seek(vc.track.length * 1000)
         await ctx.send("Skipped!")
+        logger.info(f'Skipping music')
         if vc.is_paused():
             await vc.resume()
     else:
@@ -147,6 +165,7 @@ async def pause(ctx):
         if vc.is_playing() and not vc.is_paused():
             await vc.pause()
             await ctx.send("Paused!")
+            logger.info(f'Pausing music')
         else:
             await ctx.send("Nothing is currently playing")
     else:
@@ -160,6 +179,7 @@ async def resume(ctx):
         if vc.is_paused():
             await vc.resume()
             await ctx.send("Resuming!")
+            logger.info(f'Resuming music')
         else:
             await ctx.send("Nothing is currently paused.")
     else:
@@ -196,6 +216,7 @@ async def volume(ctx, volume):
     if vc and val > 0 and val <= 100:
         await vc.set_volume(val)
         await ctx.send(f"I set my volume to {val}")
+        logger.info(f'Bot volume set to : {val}')
     else:
         await ctx.send("I need to be in a voice channel to set my volume.")
 
@@ -203,8 +224,10 @@ async def volume(ctx, volume):
 async def play_error(ctx, error):
     if isinstance(error, commands.BadArgument):
         await ctx.send("Unable to find track :(")
+        logger.error("Unable to find track")
     else:
         await ctx.send("Please join a voice channel")
+        logger.error("User not in voice channel, bot unable to join")
 
 #Run bot
 client.run(DISCORD_TOKEN)

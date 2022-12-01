@@ -111,6 +111,7 @@ env.bak/
 venv.bak/
 application.yml
 Lavalink.jar
+logs/
 
 # Spyder project settings
 .spyderproject
