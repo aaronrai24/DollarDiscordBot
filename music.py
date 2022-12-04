@@ -8,6 +8,7 @@ import wavelink
 import logging
 
 from discord.ext import commands
+from discord.utils import get
 from dotenv import load_dotenv
 
 client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
@@ -46,7 +47,6 @@ async def connect_nodes():
     )
 
 #Events, load wavelink node, play next song in queue
-#Scan messages to ensure message was sent in #commands chat
 @client.event
 async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Node: <{node.identifier}> is ready')
@@ -61,19 +61,42 @@ async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, rea
     else:
         logger.info(f'Queue is empty')
 
+#Scan messages to ensure message was sent in #commands chat
 @client.event
 async def on_message(message):
     msg = message.content
     channel = str(message.channel)
+    author = message.author
+    #Easter egg, if you DM dollar
+    if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
+        await message.channel.send('Look at you, sliding into the DMs of a bot')
+        logger.info(f'{author} sent a DM to Dollar')
+    
     if channel == 'commands' or channel == 'test':
-        logger.info(f'Bot command entered, command: {msg}')
+        logger.info(f'Bot command entered, command: {msg}, author: {author}')
         await client.process_commands(message)
     elif msg.startswith('!'):
         logger.info(f'Command entered in wrong channel, deleting: {msg}')
         await message.delete(delay = 1)
 
+#When user joins a voice channel assign DJ role, and remove when they leave
+#This prevents users not in a voice channel from making commands
+@client.event
+async def on_voice_state_update(member, before, after):
+    ctxbefore = before.channel
+    ctxafter = after.channel
+    if ctxbefore is None and ctxafter is not None:
+        role = discord.utils.get(member.guild.roles, id=1048448909942464532)
+        await member.add_roles(role)
+        logger.info(f"{member} joined {ctxafter} adding Dj role")
+    elif ctxbefore is not None and ctxafter is None:
+        role = discord.utils.get(member.guild.roles, id=1048448909942464532)
+        await member.remove_roles(role)
+        logger.info(f"{member} left {ctxbefore} removing Dj role")
+    
 #Join authors voice channel
 @client.command()
+@commands.has_role("🎧")
 async def join(ctx):
     vc = ctx.voice_client
     try:
@@ -86,8 +109,10 @@ async def join(ctx):
         await vc.set_volume(5)#Set bot volume initially to 5
     else:
         await ctx.send('The bot is already connected to a voice channel')
+
 #Leave voice channel
 @client.command()
+@commands.has_role("🎧")
 async def leave(ctx):
     vc = ctx.voice_client
     if vc:
@@ -97,6 +122,7 @@ async def leave(ctx):
 
 #Play a song, ex: !play starboy the weeknd
 @client.command()
+@commands.has_role("🎧")
 async def play(ctx, *, search: wavelink.YouTubeTrack):
     vc = ctx.voice_client
     if not vc:
@@ -121,10 +147,11 @@ async def play(ctx, *, search: wavelink.YouTubeTrack):
 
 #Skip current song and play next, ex !playskip blinding lights the weeknd
 @client.command()
+@commands.has_role("🎧")
 async def playskip(ctx, *, search: wavelink.YouTubeTrack):
     vc = ctx.voice_client
     if vc:
-        if vc.is_playing():
+        if vc.is_playing() and not vc.is_paused():
             vc.queue.put_at_front(item = search)
             await vc.seek(vc.track.length * 1000)
             await ctx.send("Playing the next song...")
@@ -134,6 +161,8 @@ async def playskip(ctx, *, search: wavelink.YouTubeTrack):
                 description=f"Now Playing {search.title}!"
             ))
             logger.info(f'Playskipping: {search.title}')
+        elif vc.is_paused():
+            await ctx.send('The bot is currently paused, to playskip, resume playing music with !resume')
         else:
             await ctx.send('The bot is not currently playing anything.')
     else:
@@ -141,6 +170,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeTrack):
 
 #Skip current song, ex: !skip
 @client.command()
+@commands.has_role("🎧")
 async def skip(ctx):
     vc = ctx.voice_client 
     if vc:
@@ -159,6 +189,7 @@ async def skip(ctx):
 
 #Pause current song, ex: !pause
 @client.command()
+@commands.has_role("🎧")
 async def pause(ctx):
     vc = ctx.voice_client
     if vc:
@@ -173,6 +204,7 @@ async def pause(ctx):
         
 #Resume current song, ex: !resume
 @client.command()
+@commands.has_role("🎧")
 async def resume(ctx):
     vc = ctx.voice_client
     if vc:
@@ -187,15 +219,19 @@ async def resume(ctx):
 
 #Show whats next in the queue
 @client.command()
+@commands.has_role("🎧")
 async def next(ctx):
     vc = ctx.voice_client
     if vc:
         await ctx.send(f"The next song is: {vc.queue.get()}")
+    elif vc.queue.is_empty:
+        await ctx.send("The queue is empty")
     else:
         await ctx.send("The bot is not connected to a voice channel")
 
 #Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
 @client.command()
+@commands.has_role("🎧")
 async def seek(ctx, seek = 0):
     vc = ctx.voice_client
     val = int(seek)
@@ -206,19 +242,20 @@ async def seek(ctx, seek = 0):
         else:
             await ctx.send("Nothing is currently playing")
     else:
-        await ctx.send("The bot is not connect to a voice channel.")
+        await ctx.send("The bot is not connected to a voice channel.")
 
 #Set volume of bot, ex !volume 1(sets volume of bot to 1)
 @client.command()
+@commands.has_role("🎧")
 async def volume(ctx, volume):
     vc = ctx.voice_client
     val = int(volume)
     if vc and val > 0 and val <= 100:
         await vc.set_volume(val)
-        await ctx.send(f"I set my volume to {val}")
-        logger.info(f'Bot volume set to : {val}')
+        await ctx.send(f"Volume set to: {val}")
+        logger.info(f'Bot volume set to: {val}')
     else:
-        await ctx.send("I need to be in a voice channel to set my volume.")
+        await ctx.send("The bot is not connected to a voice channel.")
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
