@@ -2,7 +2,6 @@
 #Current commands:
 #join, leave, play, skip, pause, resume, seek, volume, playskip, next
 import discord
-import secrets
 import os
 import wavelink
 import logging
@@ -51,7 +50,13 @@ async def connect_nodes():
 async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Node: <{node.identifier}> is ready')
     logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
+    await client.change_presence(activity=discord.Game(name="DM me to see my commands"))
 
+@client.event
+async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
+    next_track = player.source
+    await client.change_presence(activity=discord.Game(name=f"{next_track}"))
+    
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
     if not player.queue.is_empty:
@@ -60,6 +65,7 @@ async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, rea
         logger.info(f'Playing next track: {next_track}')
     else:
         logger.info(f'Queue is empty')
+        await client.change_presence(activity=discord.Game(name="Waiting for your next request"))
 
 #Scan messages to ensure message was sent in #commands chat
 @client.event
@@ -73,8 +79,11 @@ async def on_message(message):
         logger.info(f'{author} sent a DM to Dollar')
     
     if channel == 'commands' or channel == 'test':
-        logger.info(f'Bot command entered, command: {msg}, author: {author}')
-        await client.process_commands(message)
+        if msg.startswith('!'):
+            logger.info(f'Bot command entered; command: {msg}, author: {author}')
+            await client.process_commands(message)
+        else:
+            logger.info(f'User message entered; message: {msg}, author: {author}')
     elif msg.startswith('!'):
         logger.info(f'Command entered in wrong channel, deleting: {msg}')
         await message.delete(delay = 1)
@@ -85,12 +94,11 @@ async def on_message(message):
 async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
     ctxafter = after.channel
+    role = get(member.guild.roles, name="🎧")
     if ctxbefore is None and ctxafter is not None:
-        role = discord.utils.get(member.guild.roles, id=1048448909942464532)
         await member.add_roles(role)
         logger.info(f"{member} joined {ctxafter} adding Dj role")
     elif ctxbefore is not None and ctxafter is None:
-        role = discord.utils.get(member.guild.roles, id=1048448909942464532)
         await member.remove_roles(role)
         logger.info(f"{member} left {ctxbefore} removing Dj role")
     
@@ -123,44 +131,75 @@ async def leave(ctx):
 #Play a song, ex: !play starboy the weeknd
 @client.command()
 @commands.has_role("🎧")
-async def play(ctx, *, search: wavelink.YouTubeTrack):
+async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if not vc:
         custom_player = CustomPlayer()
         vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
+        await vc.set_volume(5)
 
     if vc.is_playing():
         vc.queue.put(item=search)
-        await ctx.send(embed=discord.Embed(
-            title=search.title,
-            url=search.uri,
-            description=f"Added {search.title} to the Queue!"
-        ))
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
+        embed.set_author(name=f"{search.author}")
+        embed.set_thumbnail(url=f"{search.thumbnail}")
+        if vc.queue.is_empty:
+            embed.set_footer(text="Queue is empty")
+        else:
+            nextitem = vc.queue.get()
+            vc.queue.put_at_front(item=nextitem)
+            embed.set_footer(text=f"Next song is: {nextitem}")
+        await ctx.send(embed=embed)
     else:
-        await ctx.send(embed=discord.Embed(
-            title=search.title,
-            url=search.uri,
-            description=f"Now Playing {search.title}!"
-        ))
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+        embed.set_author(name=f"{search.author}")
+        embed.set_thumbnail(url=f"{search.thumbnail}")
+        await ctx.send(embed=embed)
         await vc.play(search)
-        logger.info(f'Playing: {search.title}')
+        logger.info(f'Playing from YouTube: {search.title}')
+
+@client.command()
+@commands.has_role("🎧")
+async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
+    vc = ctx.voice_client
+    if not vc:
+        custom_player = CustomPlayer()
+        vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
+        await vc.set_volume(5)#initially set volume to 5
+
+    if vc.is_playing():
+        vc.queue.put(item=search)
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
+        embed.set_author(name=f"{search.author}")
+        if vc.queue.is_empty:
+            embed.set_footer(text="Queue is empty")
+        else:
+            nextitem = vc.queue.get()
+            vc.queue.put_at_front(item=nextitem)
+            embed.set_footer(text=f"Next song is: {nextitem}")
+        await ctx.send(embed=embed)
+    else:
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+        embed.set_author(name=f"{search.author}") 
+        await ctx.send(embed=embed)
+        await vc.play(search)
+        logger.info(f'Playing from SoundCloud: {search.title}')
 
 #Skip current song and play next, ex !playskip blinding lights the weeknd
 @client.command()
 @commands.has_role("🎧")
-async def playskip(ctx, *, search: wavelink.YouTubeTrack):
+async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if vc:
         if vc.is_playing() and not vc.is_paused():
             vc.queue.put_at_front(item = search)
             await vc.seek(vc.track.length * 1000)
             await ctx.send("Playing the next song...")
-            await ctx.send(embed=discord.Embed(
-                title=search.title,
-                url=search.uri,
-                description=f"Now Playing {search.title}!"
-            ))
-            logger.info(f'Playskipping: {search.title}')
+            embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+            embed.set_author(name=f"{search.author}")
+            embed.set_thumbnail(url=f"{search.thumbnail}")
+            await ctx.send(embed=embed)
+            logger.info(f'Playskipping to: {search.title}')
         elif vc.is_paused():
             await ctx.send('The bot is currently paused, to playskip, resume playing music with !resume')
         else:
@@ -180,7 +219,9 @@ async def skip(ctx):
             return await vc.stop()
 
         await vc.seek(vc.track.length * 1000)
-        await ctx.send("Skipped!")
+        search = vc.queue.get()
+        vc.queue.put_at_front(item=search)
+        await ctx.send(f"Skipping to next song: {search}")
         logger.info(f'Skipping music')
         if vc.is_paused():
             await vc.resume()
@@ -223,9 +264,12 @@ async def resume(ctx):
 async def next(ctx):
     vc = ctx.voice_client
     if vc:
-        await ctx.send(f"The next song is: {vc.queue.get()}")
-    elif vc.queue.is_empty:
-        await ctx.send("The queue is empty")
+        try:
+            search = vc.queue.get()
+            vc.queue.put_at_front(item=search)
+            await ctx.send(f"The next song is: {search}")
+        except:    
+            await ctx.send("The queue is empty, add a song by using !play")
     else:
         await ctx.send("The bot is not connected to a voice channel")
 
@@ -256,6 +300,19 @@ async def volume(ctx, volume):
         logger.info(f'Bot volume set to: {val}')
     else:
         await ctx.send("The bot is not connected to a voice channel.")
+
+#Print Queue
+@client.command()
+@commands.has_role("🎧")
+async def queue(ctx):
+    vc = ctx.voice_client
+    await ctx.send("Current Songs in queue: ")
+    count = 1
+    test = vc.queue.copy()
+    while not test.is_empty:
+        item = test.get()
+        await ctx.send(f"{count}: {item}")
+        count += 1
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
