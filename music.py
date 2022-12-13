@@ -50,12 +50,12 @@ async def connect_nodes():
 async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Node: <{node.identifier}> is ready')
     logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
-    await client.change_presence(activity=discord.Game(name="DM me to see my commands"))
+    #await client.change_presence(activity=discord.Game(name="DM me to see my commands"))
 
 @client.event
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
     next_track = player.source
-    await client.change_presence(activity=discord.Game(name=f"{next_track}"))
+    #await client.change_presence(activity=discord.Game(name=f"{next_track}"))
     
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
@@ -65,7 +65,7 @@ async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, rea
         logger.info(f'Playing next track: {next_track}')
     else:
         logger.info(f'Queue is empty')
-        await client.change_presence(activity=discord.Game(name="Waiting for your next request"))
+        #await client.change_presence(activity=discord.Game(name="DM me to see my commands"))
 
 #Scan messages to ensure message was sent in #commands chat
 @client.event
@@ -73,9 +73,10 @@ async def on_message(message):
     msg = message.content
     channel = str(message.channel)
     author = message.author
-    #Easter egg, if you DM dollar
+    
     if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
-        await message.channel.send('Look at you, sliding into the DMs of a bot')
+        text = 'Current commands:\n\n!join  - Bot joins voice channel you are currently in \n!leave  - Bot leaves voice channel\n!play (Song)  - Plays desired song from YouTube Music\n!playsc (Song) - Plays desired song from SoundCloud\n!skip  - Skips current song\n!pause  - Pauses currently playing song\n!resume  - Resumes last played song \n!seek (int value)  - Fast forward or backtrack current play song volume\n!playskip (Song)  - Skips current playing song and plays song you chose from YouTube Music\n!next  - Shows next song in queue\n!queue - Prints out all items in queue'
+        await message.channel.send(text)
         logger.info(f'{author} sent a DM to Dollar')
     
     if channel == 'commands' or channel == 'test':
@@ -101,7 +102,7 @@ async def on_voice_state_update(member, before, after):
     elif ctxbefore is not None and ctxafter is None:
         await member.remove_roles(role)
         logger.info(f"{member} left {ctxbefore} removing Dj role")
-    
+
 #Join authors voice channel
 @client.command()
 @commands.has_role("🎧")
@@ -158,6 +159,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
         await vc.play(search)
         logger.info(f'Playing from YouTube: {search.title}')
 
+#Play a song from SoundCloud, ex: !play Jackboy Seduction
 @client.command()
 @commands.has_role("🎧")
 async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
@@ -201,7 +203,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
             await ctx.send(embed=embed)
             logger.info(f'Playskipping to: {search.title}')
         elif vc.is_paused():
-            await ctx.send('The bot is currently paused, to playskip, resume playing music with !resume')
+            await ctx.send('The bot is currently paused, to playskip, first resume playing music with !resume')
         else:
             await ctx.send('The bot is not currently playing anything.')
     else:
@@ -269,7 +271,7 @@ async def next(ctx):
             vc.queue.put_at_front(item=search)
             await ctx.send(f"The next song is: {search}")
         except:    
-            await ctx.send("The queue is empty, add a song by using !play")
+            await ctx.send("The queue is empty, add a song by using !play or !playsc")
     else:
         await ctx.send("The bot is not connected to a voice channel")
 
@@ -301,18 +303,22 @@ async def volume(ctx, volume):
     else:
         await ctx.send("The bot is not connected to a voice channel.")
 
-#Print Queue
+#Make copy of queue, get items and print to showcase all items
 @client.command()
 @commands.has_role("🎧")
 async def queue(ctx):
     vc = ctx.voice_client
-    await ctx.send("Current Songs in queue: ")
-    count = 1
-    test = vc.queue.copy()
-    while not test.is_empty:
-        item = test.get()
-        await ctx.send(f"{count}: {item}")
-        count += 1
+    logger.info(f'Printing Queue')
+    if vc.queue.is_empty is False:    
+        await ctx.send("Current Songs in queue: ")
+        count = 1
+        test = vc.queue.copy()
+        while not test.is_empty:
+            item = test.get()
+            await ctx.send(f"{count}: {item}")
+            count += 1
+    else:
+        await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
