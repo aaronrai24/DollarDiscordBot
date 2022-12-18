@@ -10,6 +10,10 @@ from discord.ext import commands
 from discord.utils import get
 from dotenv import load_dotenv
 
+# Role Constants
+ADMIN = "⚡️"
+DJ = "🎧"
+
 client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 #Create an instance of bot(for each bot instance to have its own queue)
@@ -105,7 +109,7 @@ async def on_voice_state_update(member, before, after):
 
 #Join authors voice channel
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ or ADMIN)
 async def join(ctx):
     vc = ctx.voice_client
     try:
@@ -121,17 +125,18 @@ async def join(ctx):
 
 #Leave voice channel
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def leave(ctx):
     vc = ctx.voice_client
     if vc:
         await vc.disconnect()
+        await ctx.channel.purge(limit=10000)
     else:
         await ctx.send('The bot is not connected to a voice channel.')
 
 #Play a song, ex: !play starboy the weeknd
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if not vc:
@@ -161,7 +166,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
 
 #Play a song from SoundCloud, ex: !play Jackboy Seduction
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
     vc = ctx.voice_client
     if not vc:
@@ -189,7 +194,7 @@ async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
 
 #Skip current song and play next, ex !playskip blinding lights the weeknd
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if vc:
@@ -211,7 +216,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
 
 #Skip current song, ex: !skip
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def skip(ctx):
     vc = ctx.voice_client 
     if vc:
@@ -232,7 +237,7 @@ async def skip(ctx):
 
 #Pause current song, ex: !pause
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def pause(ctx):
     vc = ctx.voice_client
     if vc:
@@ -247,7 +252,7 @@ async def pause(ctx):
         
 #Resume current song, ex: !resume
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def resume(ctx):
     vc = ctx.voice_client
     if vc:
@@ -262,7 +267,7 @@ async def resume(ctx):
 
 #Show whats next in the queue
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def next(ctx):
     vc = ctx.voice_client
     if vc:
@@ -277,7 +282,7 @@ async def next(ctx):
 
 #Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def seek(ctx, seek = 0):
     vc = ctx.voice_client
     val = int(seek)
@@ -292,7 +297,7 @@ async def seek(ctx, seek = 0):
 
 #Set volume of bot, ex !volume 1(sets volume of bot to 1)
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def volume(ctx, volume):
     vc = ctx.voice_client
     val = int(volume)
@@ -305,7 +310,7 @@ async def volume(ctx, volume):
 
 #Make copy of queue, get items and print to showcase all items
 @client.command()
-@commands.has_role("🎧")
+@commands.has_role(DJ)
 async def queue(ctx):
     vc = ctx.voice_client
     logger.info(f'Printing Queue')
@@ -319,6 +324,13 @@ async def queue(ctx):
             count += 1
     else:
         await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
+
+#Clear Messages from channel, ex !clear 50
+@client.command(aliases=['purge', 'delete'])
+@commands.has_role(ADMIN or "MOD")
+async def clear(ctx, amount=None):
+    val = int(amount)
+    await ctx.channel.purge(limit=val)
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
