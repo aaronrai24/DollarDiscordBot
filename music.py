@@ -5,6 +5,7 @@ import discord
 import os
 import wavelink
 import logging
+import asyncio
 
 from discord.ext import commands
 from discord.utils import get
@@ -14,7 +15,13 @@ from dotenv import load_dotenv
 ADMIN = "⚡️"
 DJ = "🎧"
 
-client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+#Create Unfiltered Bot to accept commands from other bots
+class UnfilteredBot(commands.Bot):
+    async def process_commands(self, message):
+        ctx = await self.get_context(message)
+        await self.invoke(ctx)
+
+client = UnfilteredBot(command_prefix="!", intents=discord.Intents.all())
 
 #Create an instance of bot(for each bot instance to have its own queue)
 class CustomPlayer(wavelink.Player):
@@ -44,7 +51,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='127.0.0.1',
+        host='127.0.0.1',#Update to IP
         port=2333,
         password='discordTest123'
     )
@@ -165,7 +172,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
         logger.info(f'Playing from YouTube: {search.title}')
 
 #Play a song from SoundCloud, ex: !play Jackboy Seduction
-@client.command()
+@client.command(aliases=['soundcloud', 'sc'])
 @commands.has_role(DJ)
 async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
     vc = ctx.voice_client
@@ -266,7 +273,7 @@ async def resume(ctx):
         await ctx.send("The bot is not connected to a voice channel")
 
 #Show whats next in the queue
-@client.command()
+@client.command(aliases=['nextsong'])
 @commands.has_role(DJ)
 async def next(ctx):
     vc = ctx.voice_client
@@ -313,24 +320,46 @@ async def volume(ctx, volume):
 @commands.has_role(DJ)
 async def queue(ctx):
     vc = ctx.voice_client
-    logger.info(f'Printing Queue')
-    if vc.queue.is_empty is False:    
+    if vc.queue.is_empty is False:
+        logger.info(f'Printing Queue')    
         await ctx.send("Current Songs in queue: ")
         count = 1
         test = vc.queue.copy()
         while not test.is_empty:
             item = test.get()
             await ctx.send(f"{count}: {item}")
+            await asyncio.sleep(0.5)
             count += 1
     else:
+        logger.info(f'Queue is already empty')
+        await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
+
+#Make copy of queue, get items and print to showcase all items
+@client.command(aliases=['clearqueue, restart'])
+@commands.has_role(DJ)
+async def empty(ctx):
+    vc = ctx.voice_client
+    if vc.queue.is_empty is False:    
+        vc.queue.clear()
+        logger.info(f'Emptying queue')
+        await ctx.send(f"All items from queue have been removed.")
+    else:
+        logger.info(f'Queue is already empty')
         await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
 
 #Clear Messages from channel, ex !clear 50
 @client.command(aliases=['purge', 'delete'])
 @commands.has_role(ADMIN or "MOD")
 async def clear(ctx, amount=None):
-    val = int(amount)
-    await ctx.channel.purge(limit=val)
+
+    if (amount is None):
+        await ctx.send("You must enter a number after the !clear")
+    else:
+        val = int(amount)
+        if(val <= 0):
+            await ctx.send("You must enter a number greater than 0")
+        else:
+            await ctx.channel.purge(limit=val)
 
 #Error Handling if unable to find song, or user isn't in a voice channel
 async def play_error(ctx, error):
