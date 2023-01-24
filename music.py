@@ -6,6 +6,7 @@ import os
 import wavelink
 import logging
 import asyncio
+import logging.handlers
 
 from discord.ext import commands
 from discord.utils import get
@@ -35,7 +36,12 @@ load_dotenv()
 #Setup Logging
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf8', mode='a')
+handler = logging.handlers.RotatingFileHandler(
+    filename='discord.log',
+    encoding='utf-8',
+    maxBytes=32 * 1024 * 1024,  # 32 MiB
+    backupCount=5,  # Rotate through 5 files
+)
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
@@ -61,7 +67,7 @@ async def connect_nodes():
 async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Node: <{node.identifier}> is ready')
     logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
-    #await client.change_presence(activity=discord.Game(name="DM me to see my commands"))
+    await client.change_presence(activity=discord.Game(name=" Music!"))
 
 @client.event
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
