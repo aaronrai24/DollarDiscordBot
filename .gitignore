@@ -112,6 +112,7 @@ venv.bak/
 application.yml
 Lavalink.jar
 logs/
+*.csv
 
 # Spyder project settings
 .spyderproject
