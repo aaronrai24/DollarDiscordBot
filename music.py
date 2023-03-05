@@ -15,10 +15,11 @@ from discord.utils import get
 from dotenv import load_dotenv
 from lyricsgenius import Genius
 
-# Role Constants
+#Global Variables
 ADMIN = "⚡️"
 DJ = "🎧"
 run = True
+artist = ""
 
 #Create Unfiltered Bot to accept commands from other bots
 class UnfilteredBot(commands.Bot):
@@ -40,6 +41,7 @@ load_dotenv()
 #Setup Logging
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
+logging.getLogger('discord.http').setLevel(logging.INFO)
 handler = logging.handlers.RotatingFileHandler(
     filename='discord.log',
     encoding='utf-8',
@@ -62,7 +64,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='127.0.0.1',#Update to IP
+        host='127.0.0.1',
         port=2333,
         password='discordTest123'
     )
@@ -76,8 +78,8 @@ async def on_wavelink_node_ready(node: wavelink.Node):
 
 @client.event
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
-    next_track = player.source
-    #await client.change_presence(activity=discord.Game(name=f"{next_track}"))
+    global artist
+    artist = track.author
     
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
@@ -86,7 +88,7 @@ async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, rea
         await player.play(next_track)
         logger.info(f'Playing next track: {next_track}')
     else:
-        logger.info(f'Queue is empty')
+        logger.info('Queue is empty')
 
 #Scan messages to ensure message was sent in #commands chat
 @client.event
@@ -137,10 +139,10 @@ async def on_voice_state_update(member, before, after):
         await member.remove_roles(role)
         logger.info(f"{member} left {ctxbefore} removing Dj role")
     else:
-        logger.debug(f"{member} joined or left! Error adding or removing role")
+        logger.error(f"{member} joined or left! Error adding or removing role")
 
 #Join authors voice channel
-@client.command()
+@client.command(aliases=['Join'])
 @commands.has_role(DJ or ADMIN)
 async def join(ctx):
     vc = ctx.voice_client
@@ -156,7 +158,7 @@ async def join(ctx):
         await ctx.send('The bot is already connected to a voice channel')
 
 #Leave voice channel
-@client.command()
+@client.command(aliases=['Leave'])
 @commands.has_role(DJ)
 async def leave(ctx):
     vc = ctx.voice_client
@@ -167,7 +169,7 @@ async def leave(ctx):
         await ctx.send('The bot is not connected to a voice channel.')
 
 #Play a song, ex: !play starboy the weeknd
-@client.command()
+@client.command(aliases=['Play'])
 @commands.has_role(DJ)
 async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
@@ -195,9 +197,9 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
         await ctx.send(embed=embed)
         await vc.play(search)
         logger.info(f'Playing from YouTube: {search.title}')
-
+    
 #Play a song from SoundCloud, ex: !play Jackboy Seduction
-@client.command(aliases=['soundcloud', 'sc'])
+@client.command(aliases=['Playsc', 'soundcloud', 'sc'])
 @commands.has_role(DJ)
 async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
     vc = ctx.voice_client
@@ -225,7 +227,7 @@ async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
         logger.info(f'Playing from SoundCloud: {search.title}')
 
 #Skip current song and play next, ex !playskip blinding lights the weeknd
-@client.command()
+@client.command(aliases=['Playskip', 'PlaySkip'])
 @commands.has_role(DJ)
 async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
@@ -240,14 +242,14 @@ async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
             await ctx.send(embed=embed)
             logger.info(f'Playskipping to: {search.title}')
         elif vc.is_paused():
-            await ctx.send('The bot is currently paused, to playskip, first resume playing music with !resume')
+            await ctx.send('The bot is currently paused, to playskip, first resume music with !resume')
         else:
             await ctx.send('The bot is not currently playing anything.')
     else:
         await ctx.send('The bot is not connected to a voice channel.')
 
 #Skip current song, ex: !skip
-@client.command()
+@client.command(aliases=['Skip'])
 @commands.has_role(DJ)
 async def skip(ctx):
     vc = ctx.voice_client 
@@ -261,14 +263,14 @@ async def skip(ctx):
         search = vc.queue.get()
         vc.queue.put_at_front(item=search)
         await ctx.send(f"Skipping to next song: {search}")
-        logger.info(f'Skipping music')
+        logger.info('Skipping music')
         if vc.is_paused():
             await vc.resume()
     else:
         await ctx.send('The bot is not connected to a voice channel.')
 
 #Pause current song, ex: !pause
-@client.command()
+@client.command(aliases=['Pause'])
 @commands.has_role(DJ)
 async def pause(ctx):
     vc = ctx.voice_client
@@ -283,7 +285,7 @@ async def pause(ctx):
         await ctx.send("The bot is not connect to a voice channel.")
         
 #Resume current song, ex: !resume
-@client.command()
+@client.command(aliases=['Resume'])
 @commands.has_role(DJ)
 async def resume(ctx):
     vc = ctx.voice_client
@@ -298,7 +300,7 @@ async def resume(ctx):
         await ctx.send("The bot is not connected to a voice channel")
 
 #Show current playing song, ex: !nowplaying
-@client.command(aliases=['np'])
+@client.command(aliases=['Nowplaying', 'NowPlaying', 'np'])
 @commands.has_role(DJ)
 async def nowplaying(ctx):
     vc = ctx.voice_client
@@ -308,12 +310,12 @@ async def nowplaying(ctx):
             await ctx.send(f'Currently playing: {track}')
             logger.info(f'Current playing track: {track}')
         except:
-            await ctx.send(f'Nothing is currently playing, add a song by using !play or !playsc')
+            await ctx.send('Nothing is currently playing, add a song by using !play or !playsc')
     else:
         await ctx.send("The bot is not connected to a voice channel")
 
 #Show whats next in the queue
-@client.command(aliases=['nextsong'])
+@client.command(aliases=['Next', 'nextsong'])
 @commands.has_role(DJ)
 async def next(ctx):
     vc = ctx.voice_client
@@ -329,7 +331,7 @@ async def next(ctx):
         await ctx.send("The bot is not connected to a voice channel")
 
 #Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
-@client.command()
+@client.command(aliases=['Seek'])
 @commands.has_role(DJ)
 async def seek(ctx, seek = 0):
     vc = ctx.voice_client
@@ -345,7 +347,7 @@ async def seek(ctx, seek = 0):
         await ctx.send("The bot is not connected to a voice channel.")
 
 #Set volume of bot, ex !volume 1(sets volume of bot to 1)
-@client.command()
+@client.command(aliases=['Volume'])
 @commands.has_role(DJ)
 async def volume(ctx, volume):
     vc = ctx.voice_client
@@ -357,41 +359,40 @@ async def volume(ctx, volume):
     else:
         await ctx.send("The bot is not connected to a voice channel.")
 
-#Prints all items in queue
-@client.command()
+#Prints all items in queue, ex !queue
+@client.command(aliases=['Queue'])
 @commands.has_role(DJ)
 async def queue(ctx):
-    global run
-    run = True
     vc = ctx.voice_client
+    desc = ""
     if vc.queue.is_empty is False:
-        logger.info('Printing Queue')    
-        await ctx.send("Current Songs in queue: ")
-        count = 1
+        logger.info('Embedding Queue')
         test = vc.queue.copy()
-        while not test.is_empty:
-            if not run:
-                break
-            item = test.get()
-            await ctx.send(f"{count}: {item}")
-            await asyncio.sleep(0.5)
-            count += 1
+        li = list(test)
+        for i in range(len(li)):
+            desc += (f"{i+1}. {li[i]}")
+            desc += '\n\n'
+
+        img = discord.File("dollar.png", filename="output.png")
+        embed = discord.Embed(title='Whats Queued?', description=desc, colour=discord.Colour.random())
+        embed.set_thumbnail(url="attachment://output.png")
+        await ctx.send(embed=embed, file=img)
     else:
         logger.info('Queue is already empty')
-        await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
+        await ctx.send("The queue is currently empty, add a song by using !play or !playsc")
 
-#Make copy of queue, get items and print to showcase all items
-@client.command(aliases=['clearqueue, restart'])
+#Clears queue, !empty
+@client.command(aliases=['Empty', 'clearqueue', 'restart'])
 @commands.has_role(DJ)
 async def empty(ctx):
     vc = ctx.voice_client
     if vc.queue.is_empty is False:    
         vc.queue.clear()
-        logger.info(f'Emptying queue')
-        await ctx.send(f"All items from queue have been removed.")
+        logger.info('Emptying queue')
+        await ctx.send("All items from queue have been removed")
     else:
-        logger.info(f'Queue is already empty')
-        await ctx.send(f"The queue is currently empty, add a song by using !play or !playsc")
+        logger.info('Queue is already empty')
+        await ctx.send("The queue is currently empty, add a song by using !play or !playsc")
 
 #Clear Messages from channel, ex !clear 50
 @client.command(aliases=['purge', 'delete'])
@@ -408,7 +409,7 @@ async def clear(ctx, amount=None):
             await ctx.channel.purge(limit=val)
 
 #Load playlist from CSV, ex !load
-@client.command()
+@client.command(aliases=['Load'])
 @commands.has_role(DJ)
 async def load(ctx):
     vc = ctx.voice_client
@@ -455,31 +456,57 @@ async def load(ctx):
         else:
             logger.error('Error queuing/playing from playlist')
         count += 1
-    
-    await ctx.send(f'Finished loading playlist')
+
+    await ctx.send('Finished loading playlist')
     logger.info(f'Finished loading {count} songs into queue from playlist')
 
 #Print lyrics of current playing song, pulls from Genius.com
-@client.command()
+@client.command(aliases=['Lyrics'])
 @commands.has_role(DJ)
 async def lyrics(ctx):
     vc = ctx.voice_client
     track = str(vc.track)
+
+    if vc.is_playing():
+        async with ctx.typing():
+            while True:
+                try:
+                    logger.debug(f'Searching lyrics for {track} by {artist}')
+                    song = genius.search_song(track, artist)
+                    logger.info('Lyrics loaded from Genius API')
+                    break
+                except: 
+                    logger.debug('GET request timed out, retrying...')
+            if song == None:
+                await ctx.send('Unable to find song lyrics, songs from playlists are less likely to return lyrics...')
+            else:
+                if len(song.lyrics) > 4096:
+                    return await ctx.send(f"Lyrics can be found here: <{song.url}>")
+                embed = discord.Embed(title=song.title, url=song.url, description=song.lyrics, colour=discord.Colour.random())
+                embed.set_author(name=f"{song.artist}")
+                embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
+                embed.set_footer()
+                await ctx.send(embed=embed)
+    else:
+        await ctx.send('Nothing is currently playing, add a song by using !play or !playsc')
+
+#Make a post of dollars latest features(ADMIN only)
+@client.command()
+@commands.has_role(ADMIN)
+async def patch(ctx):
+    desc = '''🚩Added !lyrics command, now you see current playing song's lyrics courtesy of Genius.com 
+    \n\nFixes to !lyrics:\n\t -Reduced chance to timeout\n\t -Less likely to get incorrect lyrics
+    \n\nFixes to !queue:\n\t -Increased speed of printing
+    \n\nFixes to !load:\n\t -Hard set to 75 songs from playlist, reduces strain on GET requests from YoutubeMusic
+    \n\nOther New Features:\n\t -Added ability to print latest updates\n\t -Capitalization of first letter of commands no longer matters'''
+
+    img = discord.File("dollar.png", filename="output.png")
     
-    async with ctx.typing():
-        try:
-            song = genius.search_song(track)
-            logger.info('Lyrics loaded from Genius API')
-            if len(song.lyrics) > 4096:
-                return await ctx.send(f"Lyrics can be found here: <{song.url}>")
-            embed = discord.Embed(title=song.title, url=song.url, description=song.lyrics, colour=discord.Colour.random())
-            embed.set_author(name=f"{song.artist}")
-            embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
-            embed.set_footer()
-            await ctx.send(embed=embed)
-        except TimeoutError:
-            ctx.send('Unable to get lyrics from Genius.com!')
-            logger.error('API Timeout/Unable to retrieve lyrics')
+    channel = client.get_channel(1043712431265955910)
+    embed = discord.Embed(title='Dollar: Latest Update', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed.set_thumbnail(url="attachment://output.png")
+    embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
+    await channel.send(embed=embed, file=img)
 
 #Stop loading playlist or printing queue
 @client.command()
