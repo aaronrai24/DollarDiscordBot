@@ -45,7 +45,7 @@ logging.getLogger('discord.http').setLevel(logging.INFO)
 handler = logging.handlers.RotatingFileHandler(
     filename='discord.log',
     encoding='utf-8',
-    maxBytes=32 * 1024 * 1024,  # 32 MiB
+    maxBytes=1000000,  # 1mb
     backupCount=5,  # Rotate through 5 files
 )
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
@@ -64,7 +64,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='127.0.0.1',
+        host='localhost',
         port=2333,
         password='discordTest123'
     )
@@ -103,7 +103,7 @@ async def on_message(message):
         logger.info(f'{author} sent a DM to Dollar')
  
 
-    if channel == 'commands' or channel == 'test':
+    if channel.startswith('commands') or channel.startswith('test'):
         if msg.startswith('!'):
             logger.info(f'Bot command entered. Command: {msg} | Author: {author}')
             await client.process_commands(message)
@@ -113,7 +113,7 @@ async def on_message(message):
         else:
             split_v1 = str(message.attachments).split("filename='")[1]
             filename = str(split_v1).split("' ")[0]
-            if filename.endswith(".csv"):                                   # refactor if possible
+            if filename.endswith(".csv"):
                 await message.attachments[0].save(fp='ex.csv')
                 await message.channel.send('File Downloaded, use !load to load songs into queue.')
             logger.info(f'CSV successfully downloaded, author: {author}')
@@ -131,15 +131,39 @@ async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
     ctxafter = after.channel
     role = get(member.guild.roles, name=DJ)
+    server = member.guild.name
+    if str(member) == 'Dollar#5869':
+        dollar = member.id
+    else:
+        dollar = 0
 
+    #Add/Remove DJ Role from users
     if ctxbefore is None and ctxafter is not None:
         await member.add_roles(role)
         logger.info(f"{member} joined {ctxafter} adding Dj role")
     elif ctxbefore is not None and ctxafter is None:
         await member.remove_roles(role)
         logger.info(f"{member} left {ctxbefore} removing Dj role")
-    else:
-        logger.error(f"{member} joined or left! Error adding or removing role")
+
+    #Inactivity Checker, if Dollar idle for 10 minutes disconnect
+    if member.id != dollar:
+        return
+    
+    elif ctxbefore is None:
+        vc = after.channel.guild.voice_client
+        time = 0
+        while True:
+            await asyncio.sleep(1)
+            time = time + 1
+            if time % 30 == 0:
+                logger.info(f'Dollar has been idle for {time} seconds in {server}')
+            if vc.is_playing() and not vc.is_paused():
+                time = 0
+            if time == 600:
+                logger.info(f'10 minutes reached, Dollar disconnecting from {server}')
+                await vc.disconnect()
+            if not vc.is_connected():
+                break
 
 #Join authors voice channel
 @client.command(aliases=['Join'])
@@ -398,7 +422,6 @@ async def empty(ctx):
 @client.command(aliases=['purge', 'delete'])
 @commands.has_role(ADMIN or "MOD")
 async def clear(ctx, amount=None):
-
     if (amount is None):
         await ctx.send("You must enter a number after the !clear")
     else:
@@ -471,12 +494,12 @@ async def lyrics(ctx):
         async with ctx.typing():
             while True:
                 try:
-                    logger.debug(f'Searching lyrics for {track} by {artist}')
+                    logger.info(f'Searching lyrics for {track} by {artist}')
                     song = genius.search_song(track, artist)
                     logger.info('Lyrics loaded from Genius API')
                     break
                 except: 
-                    logger.debug('GET request timed out, retrying...')
+                    logger.error('GET request timed out, retrying...')
             if song == None:
                 await ctx.send('Unable to find song lyrics, songs from playlists are less likely to return lyrics...')
             else:
@@ -494,16 +517,17 @@ async def lyrics(ctx):
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''🚩Added !lyrics command, now you see current playing song's lyrics courtesy of Genius.com 
-    \n\nFixes to !lyrics:\n\t -Reduced chance to timeout\n\t -Less likely to get incorrect lyrics
-    \n\nFixes to !queue:\n\t -Increased speed of printing
-    \n\nFixes to !load:\n\t -Hard set to 75 songs from playlist, reduces strain on GET requests from YoutubeMusic
-    \n\nOther New Features:\n\t -Added ability to print latest updates\n\t -Capitalization of first letter of commands no longer matters'''
+    desc = '''🚩Added idle timeout, Dollar will now leave voice channels after being idle for 10 minutes
+    \n\nInternal Fixes to Dollar:
+    \n-Logging changes, 5 log files 1mb each, records of commands entered to help with debugging
+    \n-Removed error log when users mute/deafen while in a voice channel
+    '''
 
     img = discord.File("dollar.png", filename="output.png")
     
     channel = client.get_channel(1043712431265955910)
-    embed = discord.Embed(title='Dollar: Latest Update', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed = discord.Embed(title='Patch: 1.0.5', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed.set_author(name='Dollar')
     embed.set_thumbnail(url="attachment://output.png")
     embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
     await channel.send(embed=embed, file=img)
@@ -514,7 +538,7 @@ async def patch(ctx):
 async def stop(ctx):
     global run
     run = False
-    logger.debug('Playlist/Queue loading interrupted')
+    logger.info('Playlist/Queue loading interrupted')
     await ctx.send('Interrupting!')
 
 #Error Handling if unable to find song, or user isn't in a voice channel
