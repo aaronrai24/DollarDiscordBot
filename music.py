@@ -1,6 +1,6 @@
 #This music bot uses wavelink instead of FFMPEG
 #Current commands:
-#join, leave, play, skip, pause, resume, nowplaying, seek, volume, playskip, next, load, lyrics, stop
+#join, leave, play, skip, pause, resume, nowplaying, seek, volume, playskip, next, load, lyrics, stop, help
 import discord
 import os
 import wavelink
@@ -18,8 +18,10 @@ from lyricsgenius import Genius
 #Global Variables
 ADMIN = "⚡️"
 DJ = "🎧"
+MOD = "🌩️"
 run = True
 artist = ""
+CREATEDCHANNELS = []
 
 #Create Unfiltered Bot to accept commands from other bots
 class UnfilteredBot(commands.Bot):
@@ -28,6 +30,7 @@ class UnfilteredBot(commands.Bot):
         await self.invoke(ctx)
 
 client = UnfilteredBot(command_prefix="!", intents=discord.Intents.all())
+client.remove_command('help')
 
 #Create an instance of bot(for each bot instance to have its own queue)
 class CustomPlayer(wavelink.Player):
@@ -64,7 +67,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='localhost',
+        host='10.0.0.210',
         port=2333,
         password='discordTest123'
     )
@@ -74,7 +77,7 @@ async def connect_nodes():
 async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Node: <{node.identifier}> is ready')
     logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
-    await client.change_presence(activity=discord.Game(name=" Music!"))
+    await client.change_presence(activity=discord.Game(name=" Music! | !help"))
 
 @client.event
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
@@ -130,20 +133,58 @@ async def on_message(message):
 async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
     ctxafter = after.channel
+    guild = client.get_guild(261351089864048645)
+    category = 384476983251173386
+    channel = 'JOIN HERE💎'
     role = get(member.guild.roles, name=DJ)
-    server = member.guild.name
+    user = str(member).split("#")[0]
     if str(member) == 'Dollar#5869':
         dollar = member.id
     else:
         dollar = 0
 
-    #Add/Remove DJ Role from users
+    #Add/Remove DJ Role from users, if user join Public💎 create a voice channel, remove channel when its empty
+    #Tracks when users join/leave/move voice channels
     if ctxbefore is None and ctxafter is not None:
+        #Somebody joined a voice channel
         await member.add_roles(role)
         logger.info(f"{member} joined {ctxafter} adding Dj role")
+        if str(ctxafter) == channel:
+            category_channel = discord.utils.get(guild.categories, id=category)
+            v_channel = await guild.create_voice_channel(f"{user}'s channel",category=category_channel,position=3)
+            CREATEDCHANNELS.append(v_channel.id)
+            logger.info(f'Created {v_channel}')
+            await member.move_to(v_channel)
+            logger.info(f'Moved {member} to {v_channel}')
     elif ctxbefore is not None and ctxafter is None:
+        #Somebody left a voice channel
         await member.remove_roles(role)
         logger.info(f"{member} left {ctxbefore} removing Dj role")
+        for id in CREATEDCHANNELS:
+            if ctxbefore.id == id:
+                v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
+                if len(v_channel.members) == 0:
+                    await v_channel.delete()
+                    logger.info(f'Deleted {v_channel}')
+                    CREATEDCHANNELS.remove(ctxbefore.id)
+    elif len(str(ctxbefore)) > 0 and len(str(ctxafter)) > 0:
+        #Somebody was already connected to a vc but moved channels
+        logger.info(f'{member} moved from {ctxbefore} to {ctxafter}')
+        if str(ctxafter) == channel:
+            category_channel = discord.utils.get(guild.categories, id=category)
+            v_channel = await guild.create_voice_channel(f"{user}'s channel",category=category_channel,position=3)
+            CREATEDCHANNELS.append(v_channel.id)
+            logger.info(f'Created {v_channel}')
+            await member.move_to(v_channel)
+            logger.info(f'Moved {member} to {v_channel}')
+        else:
+            for id in CREATEDCHANNELS:
+                if ctxbefore.id == id:
+                    v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
+                    if len(v_channel.members) == 0:
+                        await v_channel.delete()
+                        logger.info(f'Deleted {v_channel}')
+                        CREATEDCHANNELS.remove(ctxbefore.id)
 
     #Inactivity Checker, if Dollar idle for 10 minutes disconnect
     if member.id != dollar:
@@ -156,11 +197,11 @@ async def on_voice_state_update(member, before, after):
             await asyncio.sleep(1)
             time = time + 1
             if time % 30 == 0:
-                logger.info(f'Dollar has been idle for {time} seconds in {server}')
+                logger.info(f'Dollar has been idle for {time} seconds in {str(guild)}')
             if vc.is_playing() and not vc.is_paused():
                 time = 0
             if time == 600:
-                logger.info(f'10 minutes reached, Dollar disconnecting from {server}')
+                logger.info(f'10 minutes reached, Dollar disconnecting from {str(guild)}')
                 await vc.disconnect()
             if not vc.is_connected():
                 break
@@ -397,7 +438,7 @@ async def queue(ctx):
             desc += (f"{i+1}. {li[i]}")
             desc += '\n\n'
 
-        img = discord.File("dollar.png", filename="output.png")
+        img = discord.File("dollar2.png", filename="output.png")
         embed = discord.Embed(title='Whats Queued?', description=desc, colour=discord.Colour.random())
         embed.set_thumbnail(url="attachment://output.png")
         await ctx.send(embed=embed, file=img)
@@ -420,7 +461,7 @@ async def empty(ctx):
 
 #Clear Messages from channel, ex !clear 50
 @client.command(aliases=['purge', 'delete'])
-@commands.has_role(ADMIN or "MOD")
+@commands.has_role(ADMIN or MOD)
 async def clear(ctx, amount=None):
     if (amount is None):
         await ctx.send("You must enter a number after the !clear")
@@ -517,24 +558,57 @@ async def lyrics(ctx):
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''🚩Added idle timeout, Dollar will now leave voice channels after being idle for 10 minutes
+    desc = '''🚩Added !help for added visibility of all of dollars commands
+    \n - !help will now create an embed of all commands in the text channel
+    \n\n🚩Added auto channel creation
+    \nAuto Channel Creation:
+    \n- Join the JOIN HERE💎 channel
+    \n- Dollar will create a channel and move you to that channel
+    \n- Once all users have left that new channel, dollar will automatically remove that channel
     \n\nInternal Fixes to Dollar:
-    \n-Logging changes, 5 log files 1mb each, records of commands entered to help with debugging
-    \n-Removed error log when users mute/deafen while in a voice channel
+    \n- Fixed bug where users moving between channels would not update voice state
+    \n- Now logs when a user moves between voice channels
     '''
 
     img = discord.File("dollar.png", filename="output.png")
-    
-    channel = client.get_channel(1043712431265955910)
-    embed = discord.Embed(title='Patch: 1.0.5', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+
+    channel = client.get_channel(1043712431265955910)   #patches channel
+    embed = discord.Embed(title='Patch: 1.0.6', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
     embed.set_author(name='Dollar')
     embed.set_thumbnail(url="attachment://output.png")
     embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
     await channel.send(embed=embed, file=img)
 
+@client.command()
+async def help(ctx):
+    desc = '''  !join  - Bot joins voice channel you are currently in 
+                \n!leave  - Bot leaves voice channel
+                \n!play (Song)  - Plays desired song from YouTube Music
+                \n!playsc (Song) - Plays desired song from SoundCloud
+                \n!skip  - Skips current song
+                \n!pause  - Pauses currently playing song
+                \n!resume  - Resumes last played song 
+                \n!seek (int value)  - Fast forward or backtrack current play song volume
+                \n!playskip (Song)  - Skips current playing song and plays song you chose from YouTube Music
+                \n!nowplaying - Shows current playing song
+                \n!next  - Shows next song in queue
+                \n!queue - Prints out all items in queue
+                \n!empty - Clears Dollars queue
+                \n!load - Loads last saved playlist for Dollar to play
+                \n!lyrics - Loads lyrics from Genius.com for current playing song
+                \n\nWanna play your own playlist(75 song limit)? Export your Spotify playlist at https://exportify.net/ and then upload it to this channel'''
+    
+    img = discord.File("dollar3.png", filename="output.png")
+    
+    embed = discord.Embed(title='Current Commands', description=desc, colour=0x2ecc71)
+    embed.set_author(name='Dollar')
+    embed.set_thumbnail(url="attachment://output.png")
+    embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
+    await ctx.send(embed=embed, file=img)
+
 #Stop loading playlist or printing queue
 @client.command()
-@commands.has_role(ADMIN or 'MOD')
+@commands.has_role(ADMIN or MOD)
 async def stop(ctx):
     global run
     run = False
