@@ -48,10 +48,10 @@ logging.getLogger('discord.http').setLevel(logging.INFO)
 handler = logging.handlers.RotatingFileHandler(
     filename='discord.log',
     encoding='utf-8',
-    maxBytes=1000000,  # 1mb
+    maxBytes=1024*1024,  # 1mb
     backupCount=5,  # Rotate through 5 files
 )
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
 logger.addHandler(handler)
 
 #Get Discord and Genius token from ENV
@@ -67,7 +67,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='10.0.0.210',
+        host='127.0.0.1',
         port=2333,
         password='discordTest123'
     )
@@ -99,7 +99,7 @@ async def on_message(message):
     msg = message.content
     channel = str(message.channel)
     author = message.author
-    
+
     if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
         text = 'All of my commands are listed in the #commands chat in the mfDiscord, too add me to your discord or to get a list of commands, DM Cash#8915!'
         await message.channel.send(text)
@@ -133,29 +133,29 @@ async def on_message(message):
 async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
     ctxafter = after.channel
-    guild = client.get_guild(261351089864048645)
-    category = 384476983251173386
-    channel = 'JOIN HERE💎'
+    guild = client.get_guild(member.guild.id)
+    channel = discord.utils.get(guild.channels, name='JOIN HERE💎')
+    category = channel.category_id
     role = get(member.guild.roles, name=DJ)
     user = str(member).split("#")[0]
+
     if str(member) == 'Dollar#5869':
         dollar = member.id
     else:
         dollar = 0
 
     #Add/Remove DJ Role from users, if user join Public💎 create a voice channel, remove channel when its empty
-    #Tracks when users join/leave/move voice channels
     if ctxbefore is None and ctxafter is not None:
         #Somebody joined a voice channel
         await member.add_roles(role)
         logger.info(f"{member} joined {ctxafter} adding Dj role")
-        if str(ctxafter) == channel:
+        if str(ctxafter) == str(channel):
             category_channel = discord.utils.get(guild.categories, id=category)
-            v_channel = await guild.create_voice_channel(f"{user}'s channel",category=category_channel,position=3)
+            v_channel = await guild.create_voice_channel(f"{user}'s Channel",category=category_channel,position=1)
             CREATEDCHANNELS.append(v_channel.id)
-            logger.info(f'Created {v_channel}')
+            logger.info(f'Successfully created {v_channel}')
             await member.move_to(v_channel)
-            logger.info(f'Moved {member} to {v_channel}')
+            logger.info(f'Successfully moved {member} to {v_channel}')
     elif ctxbefore is not None and ctxafter is None:
         #Somebody left a voice channel
         await member.remove_roles(role)
@@ -165,25 +165,28 @@ async def on_voice_state_update(member, before, after):
                 v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
                 if len(v_channel.members) == 0:
                     await v_channel.delete()
-                    logger.info(f'Deleted {v_channel}')
+                    logger.info(f'Successfully deleted {v_channel}')
                     CREATEDCHANNELS.remove(ctxbefore.id)
-    elif len(str(ctxbefore)) > 0 and len(str(ctxafter)) > 0:
-        #Somebody was already connected to a vc but moved channels
+    elif str(ctxbefore) == str(ctxafter):
+        #Voice update but user remained in VC
+        logger.info(f'{member} muted/deafened in {ctxafter}')
+    else:
+        #Somebody was already connected to a vc but moved to a different channel
         logger.info(f'{member} moved from {ctxbefore} to {ctxafter}')
-        if str(ctxafter) == channel:
+        if str(ctxafter) == str(channel):
             category_channel = discord.utils.get(guild.categories, id=category)
-            v_channel = await guild.create_voice_channel(f"{user}'s channel",category=category_channel,position=3)
+            v_channel = await guild.create_voice_channel(f"{user}'s Channel",category=category_channel,position=1)
             CREATEDCHANNELS.append(v_channel.id)
-            logger.info(f'Created {v_channel}')
+            logger.info(f'Successfully created {v_channel}')
             await member.move_to(v_channel)
-            logger.info(f'Moved {member} to {v_channel}')
+            logger.info(f'Successfully moved {member} to {v_channel}')
         else:
             for id in CREATEDCHANNELS:
                 if ctxbefore.id == id:
                     v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
                     if len(v_channel.members) == 0:
                         await v_channel.delete()
-                        logger.info(f'Deleted {v_channel}')
+                        logger.info(f'Successfully deleted {v_channel}')
                         CREATEDCHANNELS.remove(ctxbefore.id)
 
     #Inactivity Checker, if Dollar idle for 10 minutes disconnect
@@ -558,22 +561,16 @@ async def lyrics(ctx):
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''🚩Added !help for added visibility of all of dollars commands
-    \n - !help will now create an embed of all commands in the text channel
-    \n\n🚩Added auto channel creation
-    \nAuto Channel Creation:
-    \n- Join the JOIN HERE💎 channel
-    \n- Dollar will create a channel and move you to that channel
-    \n- Once all users have left that new channel, dollar will automatically remove that channel
-    \n\nInternal Fixes to Dollar:
-    \n- Fixed bug where users moving between channels would not update voice state
-    \n- Now logs when a user moves between voice channels
+    desc = '''Internal Fixes to Dollar:
+    \n- Fixed bug where users muting/deafining would imply 'user moved channel' logic and log incorrectly
+    \n- Dollar will now create voice channels above 'Shows📺' voice channel, it looked ugly underneath
+    \n- discord.log log format changed for readability. 
     '''
 
     img = discord.File("dollar.png", filename="output.png")
 
     channel = client.get_channel(1043712431265955910)   #patches channel
-    embed = discord.Embed(title='Patch: 1.0.6', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed = discord.Embed(title='Patch: 1.0.7', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
     embed.set_author(name='Dollar')
     embed.set_thumbnail(url="attachment://output.png")
     embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
