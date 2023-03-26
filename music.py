@@ -150,12 +150,17 @@ async def on_voice_state_update(member, before, after):
         await member.add_roles(role)
         logger.info(f"{member} joined {ctxafter} adding Dj role")
         if str(ctxafter) == str(channel):
+            await channel.set_permissions(guild.default_role, connect=False)
+            logger.info(f'Locked {str(channel)} beginning channel creation in {str(guild)}')
             category_channel = discord.utils.get(guild.categories, id=category)
             v_channel = await guild.create_voice_channel(f"{user}'s Channel",category=category_channel,position=1)
             CREATEDCHANNELS.append(v_channel.id)
-            logger.info(f'Successfully created {v_channel}')
+            logger.info(f'Successfully created {v_channel} in {str(guild)}')
             await member.move_to(v_channel)
-            logger.info(f'Successfully moved {member} to {v_channel}')
+            logger.info(f'Successfully moved {member} to {v_channel} in {str(guild)}')
+            await asyncio.sleep(5)
+            await channel.set_permissions(guild.default_role, connect=True)
+            logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
     elif ctxbefore is not None and ctxafter is None:
         #Somebody left a voice channel
         await member.remove_roles(role)
@@ -165,28 +170,30 @@ async def on_voice_state_update(member, before, after):
                 v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
                 if len(v_channel.members) == 0:
                     await v_channel.delete()
-                    logger.info(f'Successfully deleted {v_channel}')
+                    logger.info(f'Successfully deleted {v_channel} in {str(guild)}')
                     CREATEDCHANNELS.remove(ctxbefore.id)
-    elif str(ctxbefore) == str(ctxafter):
-        #Voice update but user remained in VC
-        logger.info(f'{member} muted/deafened in {ctxafter}')
-    else:
+    elif str(ctxbefore) != str(ctxafter):
         #Somebody was already connected to a vc but moved to a different channel
         logger.info(f'{member} moved from {ctxbefore} to {ctxafter}')
         if str(ctxafter) == str(channel):
+            await channel.set_permissions(guild.default_role, connect=False)
+            logger.info(f'Locked {str(channel)} beginning channel creation in {str(guild)}')
             category_channel = discord.utils.get(guild.categories, id=category)
             v_channel = await guild.create_voice_channel(f"{user}'s Channel",category=category_channel,position=1)
             CREATEDCHANNELS.append(v_channel.id)
-            logger.info(f'Successfully created {v_channel}')
+            logger.info(f'Successfully created {v_channel} in {str(guild)}')
             await member.move_to(v_channel)
-            logger.info(f'Successfully moved {member} to {v_channel}')
+            logger.info(f'Successfully moved {member} to {v_channel} in {str(guild)}')
+            await asyncio.sleep(5)
+            await channel.set_permissions(guild.default_role, connect=True)
+            logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
         else:
             for id in CREATEDCHANNELS:
                 if ctxbefore.id == id:
                     v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
                     if len(v_channel.members) == 0:
                         await v_channel.delete()
-                        logger.info(f'Successfully deleted {v_channel}')
+                        logger.info(f'Successfully deleted {v_channel} in {str(guild)}')
                         CREATEDCHANNELS.remove(ctxbefore.id)
 
     #Inactivity Checker, if Dollar idle for 10 minutes disconnect
@@ -561,16 +568,21 @@ async def lyrics(ctx):
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''Internal Fixes to Dollar:
-    \n- Fixed bug where users muting/deafining would imply 'user moved channel' logic and log incorrectly
-    \n- Dollar will now create voice channels above 'Shows📺' voice channel, it looked ugly underneath
-    \n- discord.log log format changed for readability. 
+    desc = '''Major fix to Dollar:
+    \n- Fixed major bug with auto channel creation feature. 
+    \n- Spam clicking the 'JOIN HERE💎' would lead to multiple voice channels being created for that user
+    but those channels would not be removed even when they are empty. The root cause seems to be that the 
+    user would never fully connect to the newly created voice channel, so the logic to remove the empty voice 
+    channel(s) would never run and therefore would leave stranded voice channels. 
+    \n- Now when a user joins 'JOIN HERE💎', the channel will lock for 5 seconds so that spam clicking to create channels will be impossible.
+    This forces users to connect to their newly created voice channel, after 5 seconds 'JOIN HERE💎' will unlock.
+    \n- Thank you Red Sep for finding this bug
     '''
 
     img = discord.File("dollar.png", filename="output.png")
 
     channel = client.get_channel(1043712431265955910)   #patches channel
-    embed = discord.Embed(title='Patch: 1.0.7', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed = discord.Embed(title='Patch: 1.0.7 HOTFIX', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
     embed.set_author(name='Dollar')
     embed.set_thumbnail(url="attachment://output.png")
     embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
