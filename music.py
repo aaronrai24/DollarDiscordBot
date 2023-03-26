@@ -67,7 +67,7 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='127.0.0.1',
+        host='10.0.0.210',
         port=2333,
         password='discordTest123'
     )
