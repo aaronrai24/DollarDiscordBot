@@ -60,9 +60,6 @@ logger.setLevel(logging.DEBUG)
 DISCORD_TOKEN = os.getenv('TOKEN')
 genius = Genius('GENIUSTOKEN')
 
-# Wavelink setup
-
-
 @client.event
 async def on_ready():
     client.loop.create_task(connect_nodes())
@@ -86,20 +83,46 @@ async def on_wavelink_node_ready(node: wavelink.Node):
     logger.info(f'Logged in as {node.bot.user} ({node.bot.user.id})')
     await client.change_presence(activity=discord.Game(name=' Music! | !help'))
 
-
 @client.event
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
     global artist
     artist = track.author
 
 @client.event
-async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason, guild_id):
+async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
     if not player.queue.is_empty:
         next_track = player.queue.get()
         await player.play(next_track)
         logger.info(f'Playing next track: {next_track}')
     else:
         logger.info('Queue is empty')
+
+#Patch 1.1
+# # Event was created
+# @client.event
+# async def on_scheduled_event_create(event):
+#     await event.channel.set_permissions(event.guild.default_role, connect=False)
+#     logger.info(f'The event [{event.name}] in was created in {event.guild}')
+
+# # Event was cancelled
+# @client.event
+# async def on_scheduled_event_delete(event):
+#     await event.channel.set_permissions(event.guild.default_role, connect=False)
+#     logger.info(f'The event [{event.name}] in was cancelled in {event.guild}')
+
+# # Add interested users to connect to event channel
+# @client.event
+# async def on_scheduled_event_user_add(event, user):
+#     channel = event.channel
+#     await channel.set_permissions(user, connect=True)
+#     logger.info(f'{user} is intereseted in the event [{event.name}] in {event.guild}, allowing them to connect to {channel}')
+
+# # If user loses interest in event, remove permissions to connect to channel
+# @client.event
+# async def on_scheduled_event_user_remove(event, user):
+#     channel = event.channel
+#     await channel.set_permissions(user, connect=False)
+#     logger.info(f'{user} is now uninterested in the event [{event.name}] in {event.guild}, no longer allowing them to connect to {channel}')
 
 # Scan messages to ensure message was sent in #commands chat
 @client.event
@@ -143,8 +166,7 @@ async def on_message(message):
         logger.info(f'Command entered in wrong channel, deleting: {msg}')
         await message.delete(delay=1)
 
-# When user joins a voice channel assign DJ role, and remove when they leave
-# This prevents users not in a voice channel from making commands
+# Scan when users join/leave/move voice channels
 @client.event
 async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
@@ -171,8 +193,7 @@ async def on_voice_state_update(member, before, after):
         logger.info(f'{member} joined {ctxafter} adding Dj role')
         if str(ctxafter) == str(channel):
             await channel.set_permissions(guild.default_role, connect=False)
-            logger.info(
-                f'Locked {str(channel)}, beginning channel creation in {str(guild)}')
+            logger.info(f'Locked {str(channel)}, beginning channel creation in {str(guild)}')
             category_channel = discord.utils.get(guild.categories, id=category)
             v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
             CREATEDCHANNELS.append(v_channel.id)
@@ -180,8 +201,7 @@ async def on_voice_state_update(member, before, after):
             await member.move_to(v_channel)
             await asyncio.sleep(5)
             await channel.set_permissions(guild.default_role, connect=True)
-            logger.info(
-                f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
+            logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
     elif ctxbefore is not None and ctxafter is None:
         # Somebody left a voice channel
         await member.remove_roles(role)
@@ -191,16 +211,25 @@ async def on_voice_state_update(member, before, after):
                 v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
                 if len(v_channel.members) == 0:
                     await v_channel.delete()
-                    logger.info(
-                        f'Successfully deleted {v_channel} in {str(guild)}')
+                    logger.info(f'{v_channel} empty, deleted channel in {str(guild)}')
                     CREATEDCHANNELS.remove(ctxbefore.id)
     elif str(ctxbefore) != str(ctxafter):
         # Somebody was already connected to a vc but moved to a different channel
         logger.info(f'{member} moved from {ctxbefore} to {ctxafter}')
+
+        # Prioritize removing empty channels
+        for id in CREATEDCHANNELS:
+            if ctxbefore.id == id:
+                v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
+                if len(v_channel.members) == 0:
+                    await v_channel.delete()
+                    logger.info(f'{v_channel} empty, deleted channel in {str(guild)}')
+                    CREATEDCHANNELS.remove(ctxbefore.id)
+
+        # If they move to JOIN HERE💎 go through channel creation
         if str(ctxafter) == str(channel):
             await channel.set_permissions(guild.default_role, connect=False)
-            logger.info(
-                f'Locked {str(channel)}, beginning channel creation in {str(guild)}')
+            logger.info(f'Locked {str(channel)}, beginning channel creation in {str(guild)}')
             category_channel = discord.utils.get(guild.categories, id=category)
             v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
             CREATEDCHANNELS.append(v_channel.id)
@@ -208,18 +237,7 @@ async def on_voice_state_update(member, before, after):
             await member.move_to(v_channel)
             await asyncio.sleep(5)
             await channel.set_permissions(guild.default_role, connect=True)
-            logger.info(
-                f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
-        else:
-            for id in CREATEDCHANNELS:
-                if ctxbefore.id == id:
-                    v_channel = discord.utils.get(
-                        guild.channels, id=ctxbefore.id)
-                    if len(v_channel.members) == 0:
-                        await v_channel.delete()
-                        logger.info(
-                            f'Successfully deleted {v_channel} in {str(guild)}')
-                        CREATEDCHANNELS.remove(ctxbefore.id)
+            logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
 
     # Inactivity Checker, if Dollar idle for 10 minutes disconnect
     if member.id != dollar:
@@ -232,16 +250,14 @@ async def on_voice_state_update(member, before, after):
             await asyncio.sleep(1)
             time = time + 1
             if time % 30 == 0:
-                logger.info(
-                    f'Dollar has been idle for {time} seconds in {str(guild)}')
+                logger.info(f'Dollar has been idle for {time} seconds in {str(guild)}')
             if vc.is_playing() and not vc.is_paused():
                 time = 0
             if time == 600:
-                logger.info(
-                    f'10 minutes reached, Dollar disconnecting from {str(guild)}')
+                logger.info(f'10 minutes reached, Dollar disconnecting from {str(guild)}')
                 await vc.disconnect()
                 await comchannel.purge(limit=10000)
-                logger.info('Finisehd clearing #commands channel')
+                logger.info('Finished clearing #commands channel')
             if not vc.is_connected():
                 break
 
@@ -284,8 +300,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
 
     if vc.is_playing():
         vc.queue.put(item=search)
-        embed = discord.Embed(title=search.title, url=search.uri,
-                              description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
         embed.set_author(name=f"{search.author}")
         embed.set_thumbnail(url=f"{search.thumbnail}")
         if vc.queue.is_empty:
@@ -297,8 +312,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
         await ctx.send(embed=embed)
         logger.info(f'Queued from YouTube: {search.title}')
     else:
-        embed = discord.Embed(title=search.title, url=search.uri,
-                              description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
         embed.set_author(name=f"{search.author}")
         embed.set_thumbnail(url=f"{search.thumbnail}")
         await ctx.send(embed=embed)
@@ -317,8 +331,7 @@ async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
 
     if vc.is_playing():
         vc.queue.put(item=search)
-        embed = discord.Embed(title=search.title, url=search.uri,
-                              description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
         embed.set_author(name=f"{search.author}")
         if vc.queue.is_empty:
             embed.set_footer(text="Queue is empty")
@@ -329,8 +342,7 @@ async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
         await ctx.send(embed=embed)
         logger.info(f'Queued from SoundCloud: {search.title}')
     else:
-        embed = discord.Embed(title=search.title, url=search.uri,
-                              description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+        embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
         embed.set_author(name=f"{search.author}")
         await ctx.send(embed=embed)
         await vc.play(search)
@@ -346,8 +358,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
             vc.queue.put_at_front(item=search)
             await vc.seek(vc.track.length * 1000)
             await ctx.send("Playing the next song...")
-            embed = discord.Embed(title=search.title, url=search.uri,
-                                  description=f"Now Playing {search.title}!", colour=discord.Colour.random())
+            embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
             embed.set_author(name=f"{search.author}")
             embed.set_thumbnail(url=f"{search.thumbnail}")
             await ctx.send(embed=embed)
@@ -485,8 +496,7 @@ async def queue(ctx):
             desc += '\n\n'
 
         img = discord.File("dollar2.png", filename="output.png")
-        embed = discord.Embed(title='Whats Queued?',
-                              description=desc, colour=discord.Colour.random())
+        embed = discord.Embed(title='Whats Queued?', description=desc, colour=discord.Colour.random())
         embed.set_thumbnail(url="attachment://output.png")
         await ctx.send(embed=embed, file=img)
     else:
@@ -534,7 +544,7 @@ async def load(ctx):
         vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
         await vc.set_volume(5)
 
-    await ctx.send('Loading your playlist!')
+    await ctx.send('Loading playlist!')
     logger.info('Loading Playlist')
 
     data = read_csv("ex.csv")
@@ -551,29 +561,18 @@ async def load(ctx):
         song.remove(item)
         search = await wavelink.YouTubeTrack.search(query=item[0] + " " + item[1], return_first=True)
         if vc.is_playing():
-            vc.queue.put(item=search)
-            embed = discord.Embed(title=search.title, url=search.uri,
-                                  description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
-            embed.set_author(name=f"{search.author}")
-            embed.set_thumbnail(url=f"{search.thumbnail}")
-            nextitem = vc.queue.get()
-            vc.queue.put_at_front(item=nextitem)
-            embed.set_footer(text=f"Next song is: {nextitem}")
-            await ctx.send(embed=embed)
-            logger.info(f'Added {search} to queue from playlist')
+            async with ctx.typing():
+                vc.queue.put(item=search)
+                logger.info(f'Added {search} to queue from playlist')
         elif vc.queue.is_empty:
-            embed = discord.Embed(title=search.title, url=search.uri,
-                                  description=f"Now Playing {search.title}!", colour=discord.Colour.random())
-            embed.set_author(name=f"{search.author}")
-            embed.set_thumbnail(url=f"{search.thumbnail}")
-            await ctx.send(embed=embed)
             await vc.play(search)
             logger.info(f'Playing {search} from playlist')
         else:
             logger.error('Error queuing/playing from playlist')
         count += 1
 
-    await ctx.send('Finished loading playlist')
+    await ctx.send('Finished loading playlist heres the queued songs')
+    await queue(ctx)
     logger.info(f'Finished loading {count} songs into queue from playlist')
 
 # Print lyrics of current playing song, pulls from Genius.com
@@ -611,22 +610,21 @@ async def lyrics(ctx):
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''Internal Fixes to Dollar:
-    \n- Removed nonetype error when there is a voice status update, seems like if a user joins a discord without a 'JOIN HERE💎' channel, this nonetype error would be thrown since with 
-    each voice status update, we query to get the 'JOIN HERE💎' ID.
-    \n- Removed duplicate 'User moved to x channel' logger when using auto channel creation
-    \n- Fixed auto channel creation position bug, dollar should create channels under 'JOIN HERE💎'
-    \n- Dollar auto timeout will now clear all messages in #commands channel after dollar disconnects from VC
-    \n- Added better logic to verify files are a CSV when using playlist loading feature, this was done leveraging the pandas library
-    \n- Adding logger to log all discords+owner, dollar is apart of upon intialization
-    \n- Fixed index out of range error when loading playlists less than 75 songs
+    desc = '''THIS WILL BE THE FINAL UPDATE TIL 1.1
+    \n- 1.1 development has begun and will release most likely sometime in May, there will be no more small updates for a while as 1.0.9 should be dollar's most stable state(knock on wood)
+    \nInternal Fixes to Dollar:
+    \n- Fixed major bug with auto channel creation feature:
+    \n- Dollar now prioritizes removing empty voice channels when users move to 'JOIN HERE💎', if there are no empty voice channels dollar creates a new voice channel for the users
+    \n- Improvements to playlist loading:
+    \n- No more message spam with songs being queued in the commands text chat, dollar will now log that your playlist is being loaded, when it finishes and then embed the queued songs
+    \n- This improves dollars processing of commands and reduces overhead with querying the REST API and embedding results of that query at the same time
+    \n- Fixed wavelink_track_end bug that would not allow queued songs to play after the current playing ended, aftermath of 1.0.8 :(
     '''
 
     img = discord.File("dollar.png", filename="output.png")
 
     channel = client.get_channel(1043712431265955910)  # patches channel
-    embed = discord.Embed(
-        title='Patch: 1.0.8', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    embed = discord.Embed(title='Patch: 1.0.9', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
     embed.set_author(name='Dollar')
     embed.set_thumbnail(url="attachment://output.png")
     embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
