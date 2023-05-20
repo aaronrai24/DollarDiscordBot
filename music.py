@@ -1,6 +1,7 @@
-# This music bot uses wavelink instead of FFMPEG
-# Current commands:
-# join, leave, play, skip, pause, resume, nowplaying, seek, volume, playskip, next, load, lyrics, stop, help
+# music.py
+# dev: Aaron Rai
+
+from typing import Optional
 import discord
 import os
 import wavelink
@@ -9,20 +10,29 @@ import asyncio
 import logging.handlers
 import random
 import pandas
+import time
+import psutil
+import threading
+import traceback
+import sys
+import spotipy
+import requests
+import json
 
 from pandas import *
 from discord.ext import commands
-from discord.utils import get
 from dotenv import load_dotenv
 from lyricsgenius import Genius
+from spotipy.oauth2 import SpotifyClientCredentials
+from collections import defaultdict
 
 # Global Variables
 ADMIN = '⚡️'
-DJ = '🎧'
 MOD = '🌩️'
-run = True
 artist = ''
 CREATEDCHANNELS = []
+START_TIME = time.time()
+user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
 
 # Create Unfiltered Bot to accept commands from other bots
 class UnfilteredBot(commands.Bot):
@@ -50,19 +60,33 @@ handler = logging.handlers.RotatingFileHandler(
     maxBytes=1024*1024,  # 1mb
     backupCount=5,  # Rotate through 5 files
 )
-handler.setFormatter(logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
 logger.addHandler(handler)
 logging.getLogger('discord.gateway').setLevel(logging.WARNING)
 logger.setLevel(logging.DEBUG)
 
-# Get Discord and Genius token from ENV
+# Get Discord, Genius, Spotify token from ENV
 DISCORD_TOKEN = os.getenv('TOKEN')
 genius = Genius('GENIUSTOKEN')
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+TRACKER_GG = os.getenv('TRACKERGG')
+RIOT_TOKEN = os.getenv('RIOTTOKEN')
+GITHUB_TOKEN = os.getenv('GITHUBTOKEN')
+
+# Authenticate your application with Spotify
+client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
 @client.event
 async def on_ready():
     client.loop.create_task(connect_nodes())
+    try:
+        synced = await client.tree.sync()
+        logger.info(f'Synced {len(synced)} command(s)')
+    except Exception as e:
+        logger.error(f'{e}')
+    
     for guild in client.guilds:
         logger.info(f'Dollar loaded in {guild.name}, owner: {guild.owner}')
 
@@ -71,10 +95,190 @@ async def connect_nodes():
     await client.wait_until_ready()
     await wavelink.NodePool.create_node(
         bot=client,
-        host='10.0.0.210',
+        host='127.0.0.1',
         port=2333,
         password='discordTest123'
     )
+
+#------------------------------------------------------------------------------------------------
+
+# App commands
+
+# /ping App command, Make sure dollar is alive app command
+@client.tree.command(name='ping', description='Make sure Dollar is alive')
+async def hello(interaction: discord.Interaction):
+    await interaction.response.send_message(f"Yo {interaction.user.mention}, i'm alive thanks for checking", ephemeral=True)
+
+# /status App command, Check dollar diagnostics, CPU, RAM, Uptime
+@client.tree.command(name='status', description='Dollar server status, CPU usage, Memory usage, Uptime, etc.')
+async def status(interaction: discord.Interaction):
+    uptime = time.time() - START_TIME
+    uptime_formatted = time.strftime("%H:%M:%S", time.gmtime(uptime))
+    cpu_percent = psutil.cpu_percent()
+    ram_usage = psutil.virtual_memory().percent
+    response_message = f"Bot is currently online and running smoothly.\n\nUptime: {uptime_formatted}\nCPU Load: {cpu_percent}%\nRAM Usage: {ram_usage}%"
+    await interaction.response.send_message(response_message)
+
+# /reportbug, Submit a bug
+# /reportbug, Submit a bug
+@client.tree.command(name='reportbug', description='Report a bug to the developer')
+async def reportbug(interaction: discord.Interaction, bug_title: str, bug_description: str):
+    author = interaction.user
+    server = interaction.guild
+
+    # Check if user has exceeded rate limit
+    now = time.time()
+    user_info = user_usage[author.id]
+    if now - user_info['timestamp'] < 3600 and user_info['count'] >= 3:
+        await interaction.response.send_message('You have exceeded the rate limit for this command. Please try again later.', ephemeral=True)
+        return
+    
+    # Update user usage information
+    user_info['timestamp'] = now
+    user_info['count'] += 1
+    
+    # Proceed with command as normal
+    embed = discord.Embed(title='Bug Report', description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {bug_title}\n\nDescription: {bug_description}", color=discord.Color.green())
+    logger.info(f'{author} submitted a bug in {server}')
+
+    # Send the bug report to the developer
+    user = await client.fetch_user('223947980309397506')
+    message = await user.send(embed=embed)
+    await interaction.response.send_message('Bug report submitted successfully!', ephemeral=True)
+
+    # Add reactions for accepting and declining the bug report, as well as bug in progress and completion
+    await message.add_reaction('✅')  # Accept Bug report
+    await message.add_reaction('❌')  # Decline Bug report
+
+    # Create a check function for the reactions
+    def check(reaction, user):
+        return user == user and str(reaction.emoji) in ["✅", "❌"]
+
+    # Wait for a reaction from the developer
+    try:
+        reaction, user = await client.wait_for('reaction_add', check=check)
+    except asyncio.TimeoutError:
+        await message.reply("The bug report was not accepted or declined in time.", mention_author=False)
+        logger.warning('Developer did not accept/decline bug report, timing out')
+        return
+
+    # Notify the user who submitted the bug report whether it was accepted or declined
+    if str(reaction.emoji) == '✅':
+        user_embed = discord.Embed(title='Bug Report', description=f"Your bug report regarding '{bug_title}' has been accepted!", color=discord.Color.green())
+        # Create the issue payload
+        issue_title = bug_title
+        issue_body = f'Bug report: {bug_description}\n\nSubmitted by: {author}\nServer: {server}'
+        payload = {'title': issue_title, 'body': issue_body, 'labels': ['bug']}
+
+        # Define the necessary variables
+        repository = 'DollarDiscordBot'
+        owner = 'aaronrai24'
+        access_token = GITHUB_TOKEN
+
+        # Define the API endpoint for creating an issue
+        url = f'https://api.github.com/repos/{owner}/{repository}/issues'
+
+        # Add authentication using your access token
+        headers = {'Authorization': f'token {access_token}'}
+
+        # Send the POST request to create the issue
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+        # Check the response status code
+        if response.status_code == 201:
+            logger.info('Added bug report to GitHub issues')
+        else:
+            await message.reply("Failed to add bug report to GitHub issues.", mention_author=False)
+            logger.error(f'Failed to add bug report to GitHub issues: {response.text}')
+
+    else:
+        user_embed = discord.Embed(title='Bug Report', description=f"Your bug report regarding '{bug_title}' has been declined.", color=discord.Color.red())
+    
+    try:
+        user_message = await author.send(embed=user_embed)
+        logger.info(f"Sent notification to {author}")
+    except discord.errors.Forbidden:
+        logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
+
+# /featurerequest, Submit a feature request
+@client.tree.command(name='featurerequest', description='Submit a feature request to the developer')
+async def featurerequest(interaction: discord.Interaction, feature_title: str, feature_description: str):
+    author = interaction.user
+    server = interaction.guild
+    
+    # Check if user has exceeded rate limit
+    now = time.time()
+    user_info = user_usage[author.id]
+    if now - user_info['timestamp'] < 3600 and user_info['count'] >= 3:
+        await interaction.response.send_message('You have exceeded the rate limit for this command. Please try again later.', ephemeral=True)
+        return
+    
+    # Update user usage information
+    user_info['timestamp'] = now
+    user_info['count'] += 1
+    
+    # Proceed with command as normal
+    embed = discord.Embed(title='Feature Request', description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {feature_title}\n\nDescription: {feature_description}", color=discord.Color.green())
+    logger.info(f'{author} submitted a feature request in {server}')
+
+    # Send the feature request to the developer
+    user = await client.fetch_user('223947980309397506')
+    message = await user.send(embed=embed)
+    await interaction.response.send_message('Feature request submitted successfully!', ephemeral=True)
+
+    # Add reactions for accepting and declining the feature request
+    await message.add_reaction('✅')  # Accept feature request
+    await message.add_reaction('❌')  # Decline feature request
+
+    # Create a check function for the reactions
+    def check(reaction, user):
+        return user == user and str(reaction.emoji) in ['✅', '❌']
+
+    # Wait for a reaction from the developer
+    try:
+        reaction, user = await client.wait_for('reaction_add', check=check)
+    except asyncio.TimeoutError:
+        await message.reply('The feature request was not accepted or declined in time.', mention_author=False)
+        logger.warning('Developer did not accept/decline feature request, timing out')
+        return
+    
+    # Notify the user who submitted the feature request whether it was accepted or declined
+    if str(reaction.emoji) == '✅':
+        user_embed = discord.Embed(title='Feature Request', description=f"Your feature request regarding '{feature_title}' has been accepted!", color=discord.Color.green())
+        
+        # Create the issue payload
+        issue_title = feature_title
+        issue_body = f'Feature request: {feature_description}\n\nSubmitted by: {author}\nServer: {server}'
+        payload = {'title': issue_title, 'body': issue_body, 'labels': ['enhancement']}  # Add 'enhancement' label to the issue
+
+        # Define the necessary variables
+        repository = 'DollarDiscordBot'
+        owner = 'aaronrai24'
+        access_token = GITHUB_TOKEN
+
+        # Define the API endpoint for creating an issue
+        url = f'https://api.github.com/repos/{owner}/{repository}/issues'
+
+        # Add authentication using your access token
+        headers = {'Authorization': f'token {access_token}'}
+
+        # Send the POST request to create the issue
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+        # Check the response status code
+        if response.status_code == 201:
+            logger.info('Added feature request to GitHub issues')
+        else:
+            await message.reply("Failed to add feature request to GitHub issues.", mention_author=False)
+            logger.error(f'Failed to add feature request to GitHub issues: {response.text}')
+    else:
+        user_embed = discord.Embed(title='Feature Request', description=f"Your feature request regarding '{feature_title}' has been declined.", color=discord.Color.red())
+    
+    try:
+        user_message = await author.send(embed=user_embed)
+        logger.info(f"Sent notification to {author}")
+    except discord.errors.Forbidden:
+        logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
 
 # Events, load wavelink node, play next song in queue
 @client.event
@@ -87,42 +291,57 @@ async def on_wavelink_node_ready(node: wavelink.Node):
 async def on_wavelink_track_start(player: CustomPlayer, track: wavelink.Track):
     global artist
     artist = track.author
-
+    
 @client.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
     if not player.queue.is_empty:
+        await asyncio.sleep(.5)
         next_track = player.queue.get()
         await player.play(next_track)
         logger.info(f'Playing next track: {next_track}')
     else:
         logger.info('Queue is empty')
 
-#Patch 1.1
-# # Event was created
-# @client.event
-# async def on_scheduled_event_create(event):
-#     await event.channel.set_permissions(event.guild.default_role, connect=False)
-#     logger.info(f'The event [{event.name}] in was created in {event.guild}')
+# Event was created
+@client.event
+async def on_scheduled_event_create(event):
+    logger.info(f'The event [{event.name}] in was created in {event.guild}')
 
-# # Event was cancelled
-# @client.event
-# async def on_scheduled_event_delete(event):
-#     await event.channel.set_permissions(event.guild.default_role, connect=False)
-#     logger.info(f'The event [{event.name}] in was cancelled in {event.guild}')
+# Event was cancelled
+@client.event
+async def on_scheduled_event_delete(event):
+    logger.info(f'The event [{event.name}] in was cancelled in {event.guild}')
 
-# # Add interested users to connect to event channel
-# @client.event
-# async def on_scheduled_event_user_add(event, user):
-#     channel = event.channel
-#     await channel.set_permissions(user, connect=True)
-#     logger.info(f'{user} is intereseted in the event [{event.name}] in {event.guild}, allowing them to connect to {channel}')
+# Event was modifed(changes made or status changed)
+@client.event
+async def on_scheduled_event_update(before, after):
+    start = str(before.status)
+    current = str(after.status)
+    users = after.users()
+    channel = after.channel
 
-# # If user loses interest in event, remove permissions to connect to channel
-# @client.event
-# async def on_scheduled_event_user_remove(event, user):
-#     channel = event.channel
-#     await channel.set_permissions(user, connect=False)
-#     logger.info(f'{user} is now uninterested in the event [{event.name}] in {event.guild}, no longer allowing them to connect to {channel}')
+    if start == 'EventStatus.scheduled' and current == 'EventStatus.active':
+        #Event has started
+        logger.info(f'Event [{after.name}] in {after.guild} has started')
+        async for user in users:
+            await channel.set_permissions(user, connect=True)
+            logger.info(f'{user} is interested, allowing them to connect to {channel}')
+    elif start == 'EventStatus.active' and current == 'EventStatus.completed':
+        #Event has completed
+        logger.info(f'Event [{after.name}] in {after.guild} has completed')
+        async for user in users:
+            await channel.set_permissions(user, connect=False)
+            logger.info(f'No longer allowing {user} to connect to {channel}')
+
+# Add interested users to connect to event channel
+@client.event
+async def on_scheduled_event_user_add(event, user):
+    logger.info(f'{user} is interested in [{event.name}] in {event.guild}')
+
+# If user loses interest in event, remove permissions to connect to channel
+@client.event
+async def on_scheduled_event_user_remove(event, user):
+    logger.info(f'{user} is now uninterested in the event [{event.name}] in {event.guild}')
 
 # Scan messages to ensure message was sent in #commands chat
 @client.event
@@ -132,9 +351,9 @@ async def on_message(message):
     author = message.author
 
     if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
-        text = 'All of my commands are listed in the #commands chat in the mfDiscord, too add me to your discord or to get a list of commands, DM Cash#8915!'
-        await message.channel.send(text)
         logger.info(f'{author} sent a DM to Dollar')
+        await message.author.send('Read the readme at this link: https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md, if you still')
+        await message.author.send('If you still have questions, go to a discord I am in and use /featurerequest to submit a request and interact with my devs.')
 
     if channel.startswith('commands') or channel.startswith('test'):
         if msg.startswith('!'):
@@ -159,7 +378,7 @@ async def on_message(message):
                 except Exception as e:
                     logger.error(f'Error occurred while downloading file: {e}')
                     await message.channel.send(f'Error occurred while downloading file: {e}')
-    elif msg.startswith('!clear'):
+    elif str(msg) == '!clear':
         await client.process_commands(message)
         logger.info(f"{author} used !clear")
     elif msg.startswith('!'):
@@ -177,8 +396,7 @@ async def on_voice_state_update(member, before, after):
     if channel is not None:
         category = channel.category_id
     else:
-        logger.debug(f'{guild} is not using auto-channel creation, JOIN HERE💎 channel does not exist')
-    role = get(member.guild.roles, name=DJ)
+        logger.warn(f'{guild} is not using auto-channel creation, JOIN HERE💎 channel does not exist')
     user = str(member).split("#")[0]
 
     if str(member) == 'Dollar#5869':
@@ -189,8 +407,7 @@ async def on_voice_state_update(member, before, after):
     # Add/Remove DJ Role from users, if user joins JOIN HERE💎, create a voice channel and move them to that channel, remove created channel(s) when its empty
     if ctxbefore is None and ctxafter is not None:
         # Somebody joined a voice channel
-        await member.add_roles(role)
-        logger.info(f'{member} joined {ctxafter} adding Dj role')
+        logger.info(f'{member} joined {ctxafter}')
         if str(ctxafter) == str(channel):
             await channel.set_permissions(guild.default_role, connect=False)
             logger.info(f'Locked {str(channel)}, beginning channel creation in {str(guild)}')
@@ -199,13 +416,13 @@ async def on_voice_state_update(member, before, after):
             CREATEDCHANNELS.append(v_channel.id)
             logger.info(f'Successfully created {v_channel} in {str(guild)}')
             await member.move_to(v_channel)
-            await asyncio.sleep(5)
+            while member.voice.channel != v_channel:
+                await asyncio.sleep(1)
             await channel.set_permissions(guild.default_role, connect=True)
             logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
     elif ctxbefore is not None and ctxafter is None:
         # Somebody left a voice channel
-        await member.remove_roles(role)
-        logger.info(f"{member} left {ctxbefore} removing Dj role")
+        logger.info(f'{member} left {ctxbefore}')
         for id in CREATEDCHANNELS:
             if ctxbefore.id == id:
                 v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
@@ -235,35 +452,71 @@ async def on_voice_state_update(member, before, after):
             CREATEDCHANNELS.append(v_channel.id)
             logger.info(f'Successfully created {v_channel} in {str(guild)}')
             await member.move_to(v_channel)
-            await asyncio.sleep(5)
+            while member.voice.channel != v_channel:
+                await asyncio.sleep(1)
             await channel.set_permissions(guild.default_role, connect=True)
             logger.info(f'Unlocked {str(channel)}, channel creation finished in {str(guild)}')
 
-    # Inactivity Checker, if Dollar idle for 10 minutes disconnect
+    # Inactivity Checker, create a new thread to run idle_checker
+    vc_lock = threading.Lock()
+    comchannel_lock = threading.Lock()
+    
     if member.id != dollar:
         return
 
     elif ctxbefore is None:
         vc = after.channel.guild.voice_client
-        time = 0
-        while True:
-            await asyncio.sleep(1)
-            time = time + 1
-            if time % 30 == 0:
-                logger.info(f'Dollar has been idle for {time} seconds in {str(guild)}')
-            if vc.is_playing() and not vc.is_paused():
-                time = 0
-            if time == 600:
-                logger.info(f'10 minutes reached, Dollar disconnecting from {str(guild)}')
-                await vc.disconnect()
-                await comchannel.purge(limit=10000)
-                logger.info('Finished clearing #commands channel')
-            if not vc.is_connected():
-                break
+        asyncio.create_task(idle_checker(vc, comchannel, guild))
+
+#------------------------------------------------------------------------------------------------
+
+# Functions
+
+# Inactivity Checker, disconnect dollar after 10 minutes
+async def idle_checker(vc, comchannel, guild):
+    time = 0
+    while True:
+        await asyncio.sleep(1)
+        time = time + 1
+        if time % 30 == 0:
+            logger.info(f'Dollar has been idle for {time} seconds in {str(guild)}')
+        if vc.is_playing() and not vc.is_paused():
+            time = 0
+        if time == 600:
+            logger.info(f'10 minutes reached, Dollar disconnecting from {str(guild)}')
+            await vc.disconnect()
+            await comchannel.purge(limit=500)
+            logger.info('Finished clearing #commands channel')
+        if not vc.is_connected():
+            break
+
+# Check if the command sent comes from a user in the same voice channel(for most music commands)
+def is_connected_to_same_voice():
+    async def predicate(ctx):
+        if not ctx.author.voice:
+            # User is not connected to a voice channel
+            raise commands.CheckFailure("You need to be in a voice channel to use this command")
+        elif ctx.author.voice.channel != ctx.voice_client.channel:
+            # User is connected to a different voice channel than the bot
+            raise commands.CheckFailure("You need to be in the same voice channel as Dollar to use this command")
+        return True
+    return commands.check(predicate)
+
+# Check if the command is coming from a user in a voice channel(for !join and !leave)
+def is_connected_to_voice():
+    async def predicate(ctx):
+        if not ctx.author.voice:
+            # User is not connected to a voice channel
+            raise commands.CheckFailure("You need to be in a voice channel to use this command")
+        return True
+    return commands.check(predicate)
+
+#------------------------------------------------------------------------------------------------
+
+# Dollar Music Commands
 
 # Join authors voice channel
 @client.command(aliases=['Join'])
-@commands.has_role(DJ or ADMIN)
 async def join(ctx):
     vc = ctx.voice_client
     try:
@@ -279,18 +532,18 @@ async def join(ctx):
 
 # Leave voice channel
 @client.command(aliases=['Leave'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def leave(ctx):
     vc = ctx.voice_client
     if vc:
         await vc.disconnect()
-        await ctx.channel.purge(limit=10000)
+        await ctx.channel.purge(limit=500)
     else:
         await ctx.send('The bot is not connected to a voice channel.')
 
 # Play a song, ex: !play starboy the weeknd
 @client.command(aliases=['Play'])
-@commands.has_role(DJ)
+@is_connected_to_voice()
 async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if not vc:
@@ -321,7 +574,7 @@ async def play(ctx, *, search: wavelink.YouTubeMusicTrack):
 
 # Play a song from SoundCloud, ex: !play Jackboy Seduction
 @client.command(aliases=['Playsc', 'soundcloud', 'sc'])
-@commands.has_role(DJ)
+@is_connected_to_voice()
 async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
     vc = ctx.voice_client
     if not vc:
@@ -350,7 +603,7 @@ async def playsc(ctx, *, search: wavelink.SoundCloudTrack):
 
 # Skip current song and play next, ex !playskip blinding lights the weeknd
 @client.command(aliases=['Playskip', 'PlaySkip'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
     vc = ctx.voice_client
     if vc:
@@ -372,7 +625,7 @@ async def playskip(ctx, *, search: wavelink.YouTubeMusicTrack):
 
 # Skip current song, ex: !skip
 @client.command(aliases=['Skip'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def skip(ctx):
     vc = ctx.voice_client
     if vc:
@@ -393,7 +646,7 @@ async def skip(ctx):
 
 # Pause current song, ex: !pause
 @client.command(aliases=['Pause'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def pause(ctx):
     vc = ctx.voice_client
     if vc:
@@ -408,7 +661,7 @@ async def pause(ctx):
 
 # Resume current song, ex: !resume
 @client.command(aliases=['Resume'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def resume(ctx):
     vc = ctx.voice_client
     if vc:
@@ -423,7 +676,7 @@ async def resume(ctx):
 
 # Show current playing song, ex: !nowplaying
 @client.command(aliases=['Nowplaying', 'NowPlaying', 'np'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def nowplaying(ctx):
     vc = ctx.voice_client
     if vc:
@@ -438,7 +691,7 @@ async def nowplaying(ctx):
 
 # Show whats next in the queue
 @client.command(aliases=['Next', 'nextsong'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def next(ctx):
     vc = ctx.voice_client
     if vc:
@@ -454,7 +707,7 @@ async def next(ctx):
 
 # Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
 @client.command(aliases=['Seek'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def seek(ctx, seek=0):
     vc = ctx.voice_client
     val = int(seek)
@@ -470,7 +723,7 @@ async def seek(ctx, seek=0):
 
 # Set volume of bot, ex !volume 1(sets volume of bot to 1)
 @client.command(aliases=['Volume'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def volume(ctx, volume):
     vc = ctx.voice_client
     val = int(volume)
@@ -483,7 +736,7 @@ async def volume(ctx, volume):
 
 # Prints all items in queue, ex !queue
 @client.command(aliases=['Queue'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def queue(ctx):
     vc = ctx.voice_client
     desc = ""
@@ -495,9 +748,10 @@ async def queue(ctx):
             desc += (f"{i+1}. {li[i]}")
             desc += '\n\n'
 
-        img = discord.File("dollar2.png", filename="output.png")
         embed = discord.Embed(title='Whats Queued?', description=desc, colour=discord.Colour.random())
-        embed.set_thumbnail(url="attachment://output.png")
+        file_path = os.path.join("images", "dollar2.png")
+        img = discord.File(file_path, filename='dollar2.png')
+        embed.set_thumbnail(url="attachment://dollar2.png")
         await ctx.send(embed=embed, file=img)
     else:
         logger.info('Queue is already empty')
@@ -505,7 +759,7 @@ async def queue(ctx):
 
 # Clears queue, !empty
 @client.command(aliases=['Empty', 'clearqueue', 'restart'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def empty(ctx):
     vc = ctx.voice_client
     if vc.queue.is_empty is False:
@@ -518,7 +772,7 @@ async def empty(ctx):
 
 # Clear Messages from channel, ex !clear 50
 @client.command(aliases=['purge', 'delete'])
-@commands.has_role(ADMIN or MOD)
+@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
 async def clear(ctx, amount=None):
     if (amount is None):
         await ctx.send("You must enter a number after the !clear")
@@ -532,11 +786,9 @@ async def clear(ctx, amount=None):
 
 # Load playlist from CSV, ex !load
 @client.command(aliases=['Load'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def load(ctx):
     vc = ctx.voice_client
-    global run
-    run = True
     count = 0
 
     if not vc:
@@ -547,19 +799,18 @@ async def load(ctx):
     await ctx.send('Loading playlist!')
     logger.info('Loading Playlist')
 
-    data = read_csv("ex.csv")
+    data = read_csv('ex.csv')
+    os.remove('ex.csv')
     tracks = data['Track Name'].tolist()
     artists = data['Artist Name(s)'].tolist()
     song = list(zip(tracks, artists))
 
     while song:
-        if not run:
-            break
         if count == 75:
             break
         item = random.choice(song)
         song.remove(item)
-        search = await wavelink.YouTubeTrack.search(query=item[0] + " " + item[1], return_first=True)
+        search = await wavelink.YouTubeMusicTrack.search(query=item[0] + " " + item[1], return_first=True)
         if vc.is_playing():
             async with ctx.typing():
                 vc.queue.put(item=search)
@@ -575,9 +826,53 @@ async def load(ctx):
     await queue(ctx)
     logger.info(f'Finished loading {count} songs into queue from playlist')
 
+@client.command(aliases=['generatePlaylist', 'GeneratePlaylist', 'genplay', 'genPlay'])
+@is_connected_to_same_voice()
+async def generateplaylist(ctx, playlist_type, artist=None, album=None):
+    vc = ctx.voice_client
+    count = 0
+    offset = random.randint(0, 1000)
+
+    query = f'genre:{playlist_type}'
+    if artist:
+        query += f' artist:{artist}'
+    if album:
+        query += f' album:{album}'
+
+    logger.info(f'Spotify Generating Playlist, Parameters: Genre: {playlist_type}, Artist: {artist}, Album: {album}')
+    results = sp.search(q=query, type='track', limit=25, offset=offset)
+    logger.info('Spotify Playlist Generation complete, querying songs...')
+
+    tracks = []
+    for track in results['tracks']['items']:
+        tracks.append(f"{track['name']} {track['artists'][0]['name']}")
+
+    if not tracks:
+        await ctx.send('Those filters returned zero tracks, try again.')
+        logger.warning(f'{query} returned zero results')
+    else:
+        while tracks:
+            item = str(random.choice(tracks))
+            tracks.remove(item)
+            search = await wavelink.YouTubeMusicTrack.search(query=item, return_first=True)
+            if vc.is_playing():
+                async with ctx.typing():
+                    vc.queue.put(item=search)
+                    logger.info(f'Added {search} to queue from Spotify generated playlist')
+            elif vc.queue.is_empty:
+                await vc.play(search)
+                logger.info(f'Playing {search} from Spotify generated playlist')
+            else:
+                logger.error('Error queuing/playing from Spotify generated playlist')
+            count += 1
+
+        await ctx.send('Finished loading the Spotify playlist. Here are the queued songs:')
+        await queue(ctx)
+        logger.info(f'Finished loading {count} songs into the queue from the Spotify generated playlist')
+
 # Print lyrics of current playing song, pulls from Genius.com
 @client.command(aliases=['Lyrics'])
-@commands.has_role(DJ)
+@is_connected_to_same_voice()
 async def lyrics(ctx):
     vc = ctx.voice_client
     track = str(vc.track)
@@ -606,76 +901,285 @@ async def lyrics(ctx):
     else:
         await ctx.send('Nothing is currently playing, add a song by using !play or !playsc')
 
+#------------------------------------------------------------------------------------------------
+
+# Game Stat Commands
+
+# Retreive CSGO Stats
+@client.command(aliases=['cs'])
+async def csgo(ctx, player_id):
+    url = f'https://public-api.tracker.gg/v2/csgo/standard/profile/steam/{player_id}'
+    headers = {'TRN-Api-Key': f'{TRACKER_GG}'}
+    
+    response = requests.get(url, headers=headers)
+    logger.info(f'Retrieving CSGO stats from TrackerGG, player: {player_id}')
+    if response.ok:
+        data = response.json()
+        logger.info('Stats retrieved, embedding')
+
+        embed = discord.Embed(title=f"{data['data']['platformInfo']['platformUserHandle']}'s CSGO Stats", color=0xFFA500)
+        avatar_url = data['data']['platformInfo']['avatarUrl']
+        embed.set_thumbnail(url='attachment://output.png')
+        embed.set_author(name=data['data']['platformInfo']['platformUserHandle'], icon_url=avatar_url)
+
+        for segment in data['data']['segments']:
+            segment_title = segment['metadata']['name']
+            stats = segment['stats']
+
+            for stat_key, stat_value in stats.items():
+                stat_name = stat_value['displayName']
+                stat_value = stat_value['displayValue']
+                embed.add_field(name=stat_name, value=stat_value, inline=True)
+
+            embed.add_field(name="Segment", value=segment_title, inline=False)
+            file_path = os.path.join("images", "csgo.png")
+            img = discord.File(file_path, filename='csgo.png')
+            embed.set_thumbnail(url="attachment://csgo.png")
+        # send the embed message
+        await ctx.send(embed=embed, file=img)
+    else:
+        await ctx.send('Failed to retrieve CSGO stats, are you registered with TrackerGG? If yes, please submit a bug ticket using /reportbug')
+        logger.error(f'Failed to retrieve CSGO stats for player: {player_id}')
+        logger.warning(response)
+
+# Retreive Specifc Apex Stats, filters can be weapon, gameMode, mapPool
+@client.command(aliases=['Apex'])
+async def apex(ctx,player_id):
+    
+    url = f'https://public-api.tracker.gg/v2/apex/standard/profile/origin/{player_id}'
+    headers = {'TRN-Api-Key': f'{TRACKER_GG}'}
+    
+    response = requests.get(url, headers=headers)
+    logger.info(f'Retrieving Apex stats from TrackerGG, player: {player_id}')
+    if response.ok:
+        data = response.json()
+        print(data)
+        logger.info('Stats retrieved, embedding')
+        
+        embed = discord.Embed(title=f"{data['data']['platformInfo']['platformUserHandle']}'s Apex Stats", color=0xFFA500)
+        player_info = data['data']['platformInfo']
+        avatar_url = player_info['avatarUrl']
+        handle = player_info['platformUserHandle']
+        embed.set_author(name=handle, icon_url=avatar_url)
+
+        lifetime_stats = data['data']['segments'][0]['stats']
+        level = lifetime_stats['level']['displayValue']
+        kills = lifetime_stats['kills']['displayValue']
+        embed.add_field(name='Level', value=level, inline=True)
+        embed.add_field(name='Lifetime Kills', value=kills, inline=True)
+
+        rank_score = lifetime_stats['rankScore']
+        rank_name = rank_score['metadata']['rankName']
+        embed.add_field(name='Rank', value=rank_name, inline=True)
+        
+        arena_rank_score = lifetime_stats['arenaRankScore']
+        arena_rank_name = arena_rank_score['metadata']['rankName']
+        embed.add_field(name='Arena Rank', value=arena_rank_name, inline=False)
+        
+        active_legend_stats = data['data']['segments'][1]['stats']
+        legend_name = data['data']['segments'][1]['metadata']['name']
+        embed.add_field(name='Active Legend', value=legend_name, inline=False)
+        
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send('Failed to retrieve Apex stats, are you registered with TrackerGG? If yes, please submit a bug ticket using /reportbug')
+        logger.error(f'Failed to retrieve Apex stats for player: {player_id}')
+        logger.warning(response)
+
+@client.command(aliases=['lol', 'league'])
+async def leagueoflegends(ctx, player_id):
+    region = 'na1'
+    summoner_url = f'https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{player_id}'
+    summoner_headers = {'X-Riot-Token': RIOT_TOKEN}
+
+    # Get Account Data
+    logger.info(f'Getting summoner data from RIOT API, player: {player_id}')
+    summoner_response = requests.get(summoner_url, headers=summoner_headers)
+    
+    # Get Users last matches
+    logger.info(f'Getting summoners last match from RIOT API, player: {player_id}')
+    puuid = summoner_response.json()['puuid']
+    match_url = f'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids'
+    match_response = requests.get(match_url, headers=summoner_headers)
+    last_match = match_response.json()[0]
+    print(last_match)
+    # Return all data collected into a discordEmbed
+    if summoner_response.status_code == 200 and match_response.status_code == 200:
+        logger.info(f'Obtained summoner data and summoner last match from RIOT API, player:{player_id}')
+        summoner_data = summoner_response.json()
+        summoner_id = summoner_data['id']
+
+        # Get Summoner ranked data
+        logger.info('Now obtaining summoner stats from RIOT API')
+        stats_url = f'https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
+        stats_response = requests.get(stats_url, headers=summoner_headers)
+
+        # Get Summoner's last match
+        logger.info(f'Getting summoner\'s last match details, player: {player_id}')
+        match_details_url = f'https://americas.api.riotgames.com/lol/match/v5/matches/{last_match}'
+        match_details_response = requests.get(match_details_url, headers=summoner_headers)
+        print(puuid)
+        logger.info('Obtained summoner stats and last match stats from RIOT API, embedding')
+        embed = discord.Embed(title=f'{player_id} Ranked Stats', color=0x9933FF)
+        if stats_response.status_code == 200:
+            stats = stats_response.json()
+            profile_icon_id = summoner_data['profileIconId']
+            level = summoner_data['summonerLevel']
+            profile_icon_url = f'http://ddragon.leagueoflegends.com/cdn/11.11.1/img/profileicon/{profile_icon_id}.png'
+
+            if not stats:
+                embed.add_field(name='No Results Returned', value='Have you played ranked?')
+            else:
+                for stat in stats:
+                    embed.add_field(name=stat['queueType'], value=f'{stat["tier"]} {stat["rank"]} ({stat["leaguePoints"]} LP)', inline=True)
+                    embed.add_field(name='Wins', value=f'{stat["wins"]}', inline=True)
+                    embed.add_field(name='Losses', value=f'{stat["losses"]}', inline=True)
+            embed.set_author(name=f'{player_id} LVL: {level}', icon_url=profile_icon_url)
+            file_path = os.path.join("images", "league.jpg")
+            img = discord.File(file_path, filename='league.jpg')
+            embed.set_thumbnail(url="attachment://league.jpg")
+            await ctx.send(embed=embed, file=img)
+        else:
+            logger.info(f'Failed to get summoner stats, response: {stats_response}')
+            await ctx.send('Error retrieving stats.')
+    else:
+        logger.info(f'Failed to get summoner, response: {summoner_response}')
+        await ctx.send('Player not found.')
+
+#------------------------------------------------------------------------------------------------
+
+# Dollar Diagnostic Commands
+
 # Make a post of dollars latest features(ADMIN only)
 @client.command()
 @commands.has_role(ADMIN)
 async def patch(ctx):
-    desc = '''THIS WILL BE THE FINAL UPDATE TIL 1.1
-    \n- 1.1 development has begun and will release most likely sometime in May, there will be no more small updates for a while as 1.0.9 should be dollar's most stable state(knock on wood)
-    \nInternal Fixes to Dollar:
-    \n- Fixed major bug with auto channel creation feature:
-    \n- Dollar now prioritizes removing empty voice channels when users move to 'JOIN HERE💎', if there are no empty voice channels dollar creates a new voice channel for the users
-    \n- Improvements to playlist loading:
-    \n- No more message spam with songs being queued in the commands text chat, dollar will now log that your playlist is being loaded, when it finishes and then embed the queued songs
-    \n- This improves dollars processing of commands and reduces overhead with querying the REST API and embedding results of that query at the same time
-    \n- Fixed wavelink_track_end bug that would not allow queued songs to play after the current playing ended, aftermath of 1.0.8 :(
-    '''
+    with open('patch_notes.md', 'r') as file:
+        desc = file.read()
 
-    img = discord.File("dollar.png", filename="output.png")
-
-    channel = client.get_channel(1043712431265955910)  # patches channel
-    embed = discord.Embed(title='Patch: 1.0.9', url='https://en.wikipedia.org/wiki/Dollar', description=desc, colour=0x2ecc71)
+    channel = client.get_channel(1096695017755644004)  # patches channel
+    embed = discord.Embed(
+        title='Patch: 1.1',
+        url='https://en.wikipedia.org/wiki/Dollar',
+        description=desc,
+        colour=discord.Color.green()
+    )
     embed.set_author(name='Dollar')
-    embed.set_thumbnail(url="attachment://output.png")
-    embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
+    file_path = os.path.join("images", "dollar.png")
+    img = discord.File(file_path, filename='dollar.png')
+    embed.set_thumbnail(url="attachment://dollar.png")
+    embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+
     await channel.send(embed=embed, file=img)
 
-
+# See all of dollars commands
 @client.command()
-async def help(ctx):
-    desc = '''  !join  - Bot joins voice channel you are currently in 
-                \n!leave  - Bot leaves voice channel
-                \n!play (Song)  - Plays desired song from YouTube Music
-                \n!playsc (Song) - Plays desired song from SoundCloud
-                \n!skip  - Skips current song
-                \n!pause  - Pauses currently playing song
-                \n!resume  - Resumes last played song 
-                \n!seek (int value)  - Fast forward or backtrack current play song volume
-                \n!playskip (Song)  - Skips current playing song and plays song you chose from YouTube Music
-                \n!nowplaying - Shows current playing song
-                \n!next  - Shows next song in queue
-                \n!queue - Prints out all items in queue
-                \n!empty - Clears Dollars queue
-                \n!load - Loads last saved playlist for Dollar to play
-                \n!lyrics - Loads lyrics from Genius.com for current playing song
-                \n\nWanna play your own playlist(75 song limit)? Export your Spotify playlist at https://exportify.net/ and then upload it to this channel'''
+async def help(ctx, category=None):
 
-    img = discord.File("dollar3.png", filename="output.png")
+    if category is None:
+        desc = "Available categories: music, game. Use either !help music or !help game"
+        embed = discord.Embed(title='Which commands?', description=desc, colour=0x2ecc71)
+        embed.set_author(name='Dollar')
+        file_path = os.path.join("images", "dollar3.png")
+        img = discord.File(file_path, filename='dollar3.png')
+        embed.set_thumbnail(url="attachment://dollar3.png")
+        embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+        await ctx.send(embed=embed, file=img)
+    elif category.lower() == "music":
+        file_path = os.path.join("markdown", "musicCommands.md")
+        if os.path.isfile(file_path):
+            with open(file_path, "r") as file:
+                commands = file.read()
 
-    embed = discord.Embed(title='Current Commands',
-                          description=desc, colour=0x2ecc71)
-    embed.set_author(name='Dollar')
-    embed.set_thumbnail(url="attachment://output.png")
-    embed.set_footer(text='Please send feature requests/bugs to Cash#8915')
-    await ctx.send(embed=embed, file=img)
+        embed = discord.Embed(title='Music Commands', description=commands, colour=0x2ecc71)
+        embed.set_author(name='Dollar')
+        file_path = os.path.join("images", "dollar3.png")
+        img = discord.File(file_path, filename='dollar3.png')
+        embed.set_thumbnail(url="attachment://dollar3.png")
+        embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+        await ctx.send(embed=embed, file=img)
+    elif category.lower() == "game":
+        file_path = os.path.join("markdown", "gameCommands.md")
+        if os.path.isfile(file_path):
+            with open(file_path, "r") as file:
+                commands = file.read()
 
-# Stop loading playlist or printing queue
+        embed = discord.Embed(title='Game Commands', description=commands, colour=0x2ecc71)
+        embed.set_author(name='Dollar')
+        file_path = os.path.join("images", "dollar3.png")
+        img = discord.File(file_path, filename='dollar3.png')
+        embed.set_thumbnail(url="attachment://dollar3.png")
+        embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+        await ctx.send(embed=embed, file=img)
+    else:
+        await ctx.send("Invalid category. Available categories: music, game")
+
+# Admin only, see Dollar's current threads
 @client.command()
-@commands.has_role(ADMIN or MOD)
-async def stop(ctx):
-    global run
-    run = False
-    logger.info('Playlist/Queue loading interrupted')
-    await ctx.send('Interrupting!')
+@commands.has_role(ADMIN)
+async def threaddump(ctx):
+    logger.info('START THREAD DUMP')
+    thread_list = threading.enumerate()
 
-# Error Handling if unable to find song, or user isn't in a voice channel
+    # Find the highest existing thread dump number
+    existing_dumps = [file for file in os.listdir() if file.startswith('dollar-thread-dump-')]
+    max_dump_number = 0
+    for dump in existing_dumps:
+        try:
+            dump_number = int(dump.split('-')[-1].split('.')[0])
+            max_dump_number = max(max_dump_number, dump_number)
+        except ValueError:
+            pass
+
+    dump_number = max_dump_number + 1
+    dump_file_name = f'dollar-thread-dump-{dump_number}.txt'
+
+    # Check if the dump file with the same number already exists
+    while dump_file_name in existing_dumps:
+        dump_number += 1
+        dump_file_name = f'dollar-thread-dump-{dump_number}.txt'
+
+    with open(dump_file_name, 'w') as file:
+        for thread in thread_list:
+            file.write(f'Thread: {thread.name}\n')
+            traceback.print_stack(sys._current_frames()[thread.ident], file=file)
+
+    channel = ctx.channel
+    with open(dump_file_name, 'rb') as file:
+        dump_file = discord.File(file)
+        await channel.send(file=dump_file)
+
+    logger.info('FINISH THREAD DUMP')
+
+#------------------------------------------------------------------------------------------------
+
+# Error Handling
+@play.error
 async def play_error(ctx, error):
     if isinstance(error, commands.BadArgument):
         await ctx.send("Unable to find track :(")
         logger.error("Unable to find track")
-    else:
-        await ctx.send("Please join a voice channel")
-        logger.error("User not in voice channel, bot unable to join")
+    elif isinstance(error, commands.CheckFailure):
+        await ctx.send('You must be in the same channel as dollar to use that command')
+        logger.error('User tried using command in a different channel than dollar')
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please provide a song to play")
+        logger.error('User did not provide a song when using !play')
+
+@client.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingRole):
+        await ctx.send('Insufficient Permissions to use this command')
+        logger.error('User has insufficient permissions')
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send('Command not found')
+        logger.error('User tried to use a command that does not exist')
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Missing required argument')
+        logger.error('User did not provide a required argument')
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send('Invalid argument')
+        logger.error('User provided an invalid argument')
 
 # Run bot
 client.run(DISCORD_TOKEN)
