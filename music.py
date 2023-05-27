@@ -119,7 +119,30 @@ async def status(interaction: discord.Interaction):
     response_message = f"Bot is currently online and running smoothly.\n\nUptime: {uptime_formatted}\nCPU Load: {cpu_percent}%\nRAM Usage: {ram_usage}%"
     await interaction.response.send_message(response_message)
 
-# /reportbug, Submit a bug
+# /setup App command, setup JOIN HERE and commands text channel automatically
+@client.tree.command(name='setup', description='Automatically create all dependencies to use all of Dollar\'s features')
+async def setup(interaction: discord.Interaction):
+    guild = interaction.guild
+    logger.info(f'/setup used in {guild}, creating dependencies')
+
+    # Check if voice channel 'JOIN HERE' already exists
+    voice_channel_exists = discord.utils.get(guild.voice_channels, name='JOIN HERE💎')
+    if voice_channel_exists:
+        logger.warning(f'JOIN HERE💎 already exists in {guild}')
+    else:
+        await guild.create_voice_channel('JOIN HERE💎')
+        logger.info(f'Created JOIN HERE💎 in {guild}')
+
+    # Check if text channel 'commands' already exists
+    text_channel_exists = discord.utils.get(guild.text_channels, name='commands')
+    if text_channel_exists:
+        logger.warning(f'commands already exists in {guild}')
+    else:
+        await guild.create_text_channel('commands')
+        logger.info(f'Created commands in {guild}')
+  
+    await interaction.response.send_message('Voice channel and text channels created successfully, use !help for more info.', ephemeral=True)
+
 # /reportbug, Submit a bug
 @client.tree.command(name='reportbug', description='Report a bug to the developer')
 async def reportbug(interaction: discord.Interaction, bug_title: str, bug_description: str):
@@ -323,9 +346,13 @@ async def on_scheduled_event_update(before, after):
     if start == 'EventStatus.scheduled' and current == 'EventStatus.active':
         #Event has started
         logger.info(f'Event [{after.name}] in {after.guild} has started')
+        mentioned_users = []
         async for user in users:
             await channel.set_permissions(user, connect=True)
+            mentioned_users.append(user.mention)
             logger.info(f'{user} is interested, allowing them to connect to {channel}')
+        mention_string = ' '.join(mentioned_users)
+        await channel.send(f"The event has started! {mention_string}, you can now join the voice channel.")
     elif start == 'EventStatus.active' and current == 'EventStatus.completed':
         #Event has completed
         logger.info(f'Event [{after.name}] in {after.guild} has completed')
@@ -517,18 +544,11 @@ def is_connected_to_voice():
 
 # Join authors voice channel
 @client.command(aliases=['Join'])
+@is_connected_to_voice()
 async def join(ctx):
-    vc = ctx.voice_client
-    try:
-        channel = ctx.author.voice.channel
-    except AttributeError:
-        return await ctx.send('You must be in a voice channel for the bot to connect.')
-    if not vc:
-        custom_player = CustomPlayer()
-        vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
-        await vc.set_volume(5)  # Set bot volume initially to 5
-    else:
-        await ctx.send('The bot is already connected to a voice channel')
+    custom_player = CustomPlayer()
+    vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
+    await vc.set_volume(5)  # Set bot volume initially to 5
 
 # Leave voice channel
 @client.command(aliases=['Leave'])
@@ -883,10 +903,9 @@ async def lyrics(ctx):
                 try:
                     logger.info(f'Searching lyrics for {track} by {artist}')
                     song = genius.search_song(track, artist)
-                    logger.info('Lyrics loaded from Genius API')
                     break
                 except TimeoutError:
-                    logger.error('GET request timed out, retrying...')
+                    logger.warning('GET request timed out, retrying...')
             if song == None:
                 await ctx.send('Unable to find song lyrics, songs from playlists are less likely to return lyrics...')
             else:
@@ -897,6 +916,7 @@ async def lyrics(ctx):
                 embed.set_author(name=f"{song.artist}")
                 embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
                 embed.set_footer()
+                logger.info('Lyrics loaded from Genius API')
                 await ctx.send(embed=embed)
     else:
         await ctx.send('Nothing is currently playing, add a song by using !play or !playsc')
@@ -953,10 +973,9 @@ async def apex(ctx,player_id):
     logger.info(f'Retrieving Apex stats from TrackerGG, player: {player_id}')
     if response.ok:
         data = response.json()
-        print(data)
         logger.info('Stats retrieved, embedding')
         
-        embed = discord.Embed(title=f"{data['data']['platformInfo']['platformUserHandle']}'s Apex Stats", color=0xFFA500)
+        embed = discord.Embed(title=f"{data['data']['platformInfo']['platformUserHandle']}'s Apex Stats", color=0xA70000)
         player_info = data['data']['platformInfo']
         avatar_url = player_info['avatarUrl']
         handle = player_info['platformUserHandle']
@@ -972,15 +991,15 @@ async def apex(ctx,player_id):
         rank_name = rank_score['metadata']['rankName']
         embed.add_field(name='Rank', value=rank_name, inline=True)
         
-        arena_rank_score = lifetime_stats['arenaRankScore']
-        arena_rank_name = arena_rank_score['metadata']['rankName']
-        embed.add_field(name='Arena Rank', value=arena_rank_name, inline=False)
-        
         active_legend_stats = data['data']['segments'][1]['stats']
         legend_name = data['data']['segments'][1]['metadata']['name']
         embed.add_field(name='Active Legend', value=legend_name, inline=False)
+
+        file_path = os.path.join("images", "apex.png")
+        img = discord.File(file_path, filename='apex.png')
+        embed.set_thumbnail(url="attachment://apex.png")
         
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, file=img)
     else:
         await ctx.send('Failed to retrieve Apex stats, are you registered with TrackerGG? If yes, please submit a bug ticket using /reportbug')
         logger.error(f'Failed to retrieve Apex stats for player: {player_id}')
@@ -998,14 +1017,10 @@ async def leagueoflegends(ctx, player_id):
     
     # Get Users last matches
     logger.info(f'Getting summoners last match from RIOT API, player: {player_id}')
-    puuid = summoner_response.json()['puuid']
-    match_url = f'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids'
-    match_response = requests.get(match_url, headers=summoner_headers)
-    last_match = match_response.json()[0]
-    print(last_match)
+
     # Return all data collected into a discordEmbed
-    if summoner_response.status_code == 200 and match_response.status_code == 200:
-        logger.info(f'Obtained summoner data and summoner last match from RIOT API, player:{player_id}')
+    if summoner_response.status_code == 200:
+        logger.info(f'Obtained summoner data, player:{player_id}')
         summoner_data = summoner_response.json()
         summoner_id = summoner_data['id']
 
@@ -1014,12 +1029,7 @@ async def leagueoflegends(ctx, player_id):
         stats_url = f'https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
         stats_response = requests.get(stats_url, headers=summoner_headers)
 
-        # Get Summoner's last match
-        logger.info(f'Getting summoner\'s last match details, player: {player_id}')
-        match_details_url = f'https://americas.api.riotgames.com/lol/match/v5/matches/{last_match}'
-        match_details_response = requests.get(match_details_url, headers=summoner_headers)
-        print(puuid)
-        logger.info('Obtained summoner stats and last match stats from RIOT API, embedding')
+        logger.info('Obtained summoner stats from RIOT API, embedding')
         embed = discord.Embed(title=f'{player_id} Ranked Stats', color=0x9933FF)
         if stats_response.status_code == 200:
             stats = stats_response.json()
@@ -1159,9 +1169,6 @@ async def play_error(ctx, error):
     if isinstance(error, commands.BadArgument):
         await ctx.send("Unable to find track :(")
         logger.error("Unable to find track")
-    elif isinstance(error, commands.CheckFailure):
-        await ctx.send('You must be in the same channel as dollar to use that command')
-        logger.error('User tried using command in a different channel than dollar')
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("Please provide a song to play")
         logger.error('User did not provide a song when using !play')
@@ -1180,6 +1187,9 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.BadArgument):
         await ctx.send('Invalid argument')
         logger.error('User provided an invalid argument')
+    elif isinstance(error, commands.CheckFailure):
+        await ctx.send('You must be in the same channel as dollar to use that command')
+        logger.error('User tried using command in a different channel than dollar')
 
 # Run bot
 client.run(DISCORD_TOKEN)
