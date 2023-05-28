@@ -11,6 +11,7 @@
 **New Game Commands:**
   - `!csgo (steamID)` - Grabs all CSGO stats like kills, deaths, wins, etc using TrackerGG API.
   - `!apex (originID)` - Grabs all Apex stats like kills, deaths, rank, etc using TrackerGG API.
+  - `!lol (riotID)` - Grabs your current ranked stats for this season, like wins, losses, rank etc using RIOT GAMES API.
 
 **Application commands:**
 - `/ping` - Diagnostic tool to check if Dollar's responding.
@@ -37,4 +38,5 @@
 - Added logger for when a song starts playing to help debugging songs getting 'queued' but not playing.
 - Fixes to auto channel creation, now Dollar will lock the JOIN HERE voice channel until the user has joined their created channel rather than simply locking the channel for 5 seconds.
 - Fix to !load, now queries will be done in YouTubeMusic rather than just YouTube to give better chances of just music playing and not music videos.
-- Additional fix to !load, now removes old CSV files uploaded once playlist has been loaded to prevent multiple CSVs being present on Dollar's drive.
+- Fix to !load, now removes old CSV files uploaded once playlist has been loaded to prevent multiple CSVs being present on Dollar's drive.
+- Fix to !load, if used when a CSV does not exist, user will be warned to upload a file first and the use !load, subsequent warning logger also thrown into discord.log
