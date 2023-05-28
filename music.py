@@ -1,7 +1,6 @@
 # music.py
 # dev: Aaron Rai
 
-from typing import Optional
 import discord
 import os
 import wavelink
@@ -405,7 +404,7 @@ async def on_message(message):
                 except Exception as e:
                     logger.error(f'Error occurred while downloading file: {e}')
                     await message.channel.send(f'Error occurred while downloading file: {e}')
-    elif str(msg) == '!clear':
+    elif msg.startswith('!clear'):
         await client.process_commands(message)
         logger.info(f"{author} used !clear")
     elif msg.startswith('!'):
@@ -523,7 +522,7 @@ def is_connected_to_same_voice():
         if not ctx.author.voice:
             # User is not connected to a voice channel
             raise commands.CheckFailure("You need to be in a voice channel to use this command")
-        elif ctx.author.voice.channel != ctx.voice_client.channel:
+        elif not ctx.voice_client or ctx.author.voice.channel != ctx.voice_client.channel:
             # User is connected to a different voice channel than the bot
             raise commands.CheckFailure("You need to be in the same voice channel as Dollar to use this command")
         return True
@@ -811,40 +810,40 @@ async def load(ctx):
     vc = ctx.voice_client
     count = 0
 
-    if not vc:
-        custom_player = CustomPlayer()
-        vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
-        await vc.set_volume(5)
+    fileexists = os.path.isfile('ex.csv')
 
-    await ctx.send('Loading playlist!')
-    logger.info('Loading Playlist')
+    if fileexists:
+        await ctx.send('Loading playlist!')
+        logger.info('Loading Playlist')
+        data = read_csv('ex.csv')
+        os.remove('ex.csv')
+        tracks = data['Track Name'].tolist()
+        artists = data['Artist Name(s)'].tolist()
+        song = list(zip(tracks, artists))
 
-    data = read_csv('ex.csv')
-    os.remove('ex.csv')
-    tracks = data['Track Name'].tolist()
-    artists = data['Artist Name(s)'].tolist()
-    song = list(zip(tracks, artists))
+        while song:
+            if count == 75:
+                break
+            item = random.choice(song)
+            song.remove(item)
+            search = await wavelink.YouTubeMusicTrack.search(query=item[0] + " " + item[1], return_first=True)
+            if vc.is_playing():
+                async with ctx.typing():
+                    vc.queue.put(item=search)
+                    logger.info(f'Added {search} to queue from playlist')
+            elif vc.queue.is_empty:
+                await vc.play(search)
+                logger.info(f'Playing {search} from playlist')
+            else:
+                logger.error('Error queuing/playing from playlist')
+            count += 1
 
-    while song:
-        if count == 75:
-            break
-        item = random.choice(song)
-        song.remove(item)
-        search = await wavelink.YouTubeMusicTrack.search(query=item[0] + " " + item[1], return_first=True)
-        if vc.is_playing():
-            async with ctx.typing():
-                vc.queue.put(item=search)
-                logger.info(f'Added {search} to queue from playlist')
-        elif vc.queue.is_empty:
-            await vc.play(search)
-            logger.info(f'Playing {search} from playlist')
-        else:
-            logger.error('Error queuing/playing from playlist')
-        count += 1
-
-    await ctx.send('Finished loading playlist heres the queued songs')
-    await queue(ctx)
-    logger.info(f'Finished loading {count} songs into queue from playlist')
+        await ctx.send('Finished loading playlist heres the queued songs')
+        await queue(ctx)
+        logger.info(f'Finished loading {count} songs into queue from playlist')
+    else:
+        await ctx.send('Please upload an Exportify Playlist to this channel and then use !load')
+        logger.warning('ex.csv does not exist!')
 
 @client.command(aliases=['generatePlaylist', 'GeneratePlaylist', 'genplay', 'genPlay'])
 @is_connected_to_same_voice()
@@ -1152,7 +1151,10 @@ async def threaddump(ctx):
     with open(dump_file_name, 'w') as file:
         for thread in thread_list:
             file.write(f'Thread: {thread.name}\n')
+            file.write(f'Thread ID: {thread.ident}\n')  # Add thread ID
+            file.write('Thread Stack Trace:\n')
             traceback.print_stack(sys._current_frames()[thread.ident], file=file)
+            file.write('\n')
 
     channel = ctx.channel
     with open(dump_file_name, 'rb') as file:
