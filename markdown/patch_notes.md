@@ -1,5 +1,11 @@
 **New Features**:
 
+**MyWatchList**:
+- Keep track of shows you are currently watching, or shows you've finished! Shows that have been finshed can be give an rating(1-5). 
+- Dollar now has a MySQL database for persistent data so that this data is always available to users, expect more features leveraging this database soon!
+- Support for images + more commands(including editing history) coming soon, checkout the feature requests on the [Issues](https://github.com/aaronrai24/DollarDiscordBot/issues) board.
+- Added: `!watchlist` `!addshow` `!removeshow` `!history` `!addhistory` `!removehistory`, please do `!help mywatchlist` for more info.
+
 **Spotify Playlist Generation:**
 - `!spotify 'genre' 'artist' 'album'`, can now be used to generate a 25 song playlist automatically leveraging Spotify's API. Genre is a required field, while artist and album can be given to make playlists more specific. If you would like more filters to be added I suggest taking a look at [Spotipy documentation](https://spotipy.readthedocs.io/en/latest/#spotipy.client.Spotify.search) to see what other filters may be useful, and then submit a feature request using `/featurerequest`.
 
