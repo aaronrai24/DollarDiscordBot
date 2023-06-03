@@ -1261,7 +1261,6 @@ async def addshow(ctx):
         
     else:
         await ctx.send(f"{ctx.author.mention} Didn't confirm entry. Please try !addshow again to create an entry.")
-        return
     
 # Remove entry from watchlist for user
 @client.command(aliases=['rs', 'Removeshow', 'RemoveShow'])
