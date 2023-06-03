@@ -17,7 +17,9 @@ import sys
 import spotipy
 import requests
 import json
+import mysql.connector
 
+from datetime import date
 from pandas import *
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -32,6 +34,8 @@ artist = ''
 CREATEDCHANNELS = []
 START_TIME = time.time()
 user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
+
+
 
 # Create Unfiltered Bot to accept commands from other bots
 class UnfilteredBot(commands.Bot):
@@ -72,6 +76,13 @@ CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 TRACKER_GG = os.getenv('TRACKERGG')
 RIOT_TOKEN = os.getenv('RIOTTOKEN')
 GITHUB_TOKEN = os.getenv('GITHUBTOKEN')
+
+# Initiatize connection to DB
+mydb = mysql.connector.connect(
+    host="localhost",
+    user= os.getenv('DB_USER'),
+    password= os.getenv('DB_PW'),
+    database="cash")
 
 # Authenticate your application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
@@ -536,6 +547,15 @@ def is_connected_to_voice():
             raise commands.CheckFailure("You need to be in a voice channel to use this command")
         return True
     return commands.check(predicate)
+
+#Convert tags to Icons
+def tag2Icons (tag):
+    if tag == 'Anime':
+        return '🇯🇵'
+    elif tag == 'TV':
+        return '📺'
+    else:
+        return '🎥'
 
 #------------------------------------------------------------------------------------------------
 
@@ -1057,6 +1077,500 @@ async def leagueoflegends(ctx, player_id):
 
 #------------------------------------------------------------------------------------------------
 
+# WatchList Commands
+
+# Query for userID and return Username with their watchlist if found
+# else,  generate entry and initialization message
+@client.command(aliases=['wl'])
+async def watchlist(ctx):
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+
+    # Initialize entry for user
+    if len(myresult) == 0:
+        try:
+            mycursor.execute("INSERT INTO userlist (Username) VALUES (\'%s\')" % str(ctx.author))
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        mydb.commit()
+        await ctx.send(f'{ctx.author.mention} Initialization complete! Created an entry for you!')
+        logger.info(f'Entry created for {ctx.author}')
+            
+
+    #print watchlist for user
+    else:
+        logger.info(f'Entry already exists for {ctx.author}, printing their watchlist')
+        userId = myresult[0][0]
+        try:
+            mycursor.execute("SELECT * FROM activelist WHERE UserID = \'%s\'" % userId)
+            logger.info(f'Executed query to return entries in activelist for {ctx.author}')
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        userresults = mycursor.fetchall()
+        if not len(userresults):
+            await ctx.send(f"{ctx.author.mention} Current list is empty. Please use !addshow to add to your WatchList")
+            return
+        
+        # Embed response
+        embed = discord.Embed(title="Current WatchList", colour=discord.Colour.random())
+        embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar.url)
+        embed.add_field(name='Title', value='', inline=True)
+        embed.add_field(name='Tag', value='', inline=True)
+        embed.add_field(name='Order', value='', inline=True)
+        for x in userresults:
+            embed.add_field(name='', value=x[1], inline=True)
+            embed.add_field(name='', value=tag2Icons(x[3]), inline=True)
+            embed.add_field(name='', value=x[4], inline=True)
+        await ctx.send(embed=embed)
+        
+
+# Add entry to watchlist for user
+@client.command(aliases=['AddShow', 'addShow', 'Addshow', 'as'])
+async def addshow(ctx):
+    # Get UserID from Username
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+    if len(myresult) == 0:
+        await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
+        return
+    userId = myresult[0][0]
+
+    # Check if 7 entries and get index for new entry.
+    try:
+        mycursor.execute("SELECT TableIndex FROM activelist WHERE UserID = %d ORDER BY TableIndex DESC LIMIT 1" % userId)
+        logger.info(f'Executed query to return highest TableIndex for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    index = mycursor.fetchall()
+    if index == []:
+        index = 1
+    else:
+        index = index[0][0] + 1
+    if index > 7:
+        await ctx.send(f"{ctx.author.mention} Maximum size of WatchList reached (7).\nPlease use !removeshow to clear an entry")
+        return
+
+    # Prompt user for show title and sanitize input; timeout after 15 seconds
+    await ctx.send(f"{ctx.author.mention} Enter the show name: ")
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+    try:
+        title = await client.wait_for('message', check=check, timeout=15)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+    # Sanitize input for \'
+    if title.content.find('\'') != -1:
+        await ctx.send(f"{ctx.author.mention} Please ensure you do not include apostrophes or other invalid characters.\nTry !addshow again.")
+        return
+
+    # Prompt user for show tag
+    msg = await ctx.send(f"{ctx.author.mention} Select the shows tag (TV 📺, Anime 🇯🇵, Movie 🎥): ")
+    await msg.add_reaction('📺')  # TV entry
+    await msg.add_reaction('🇯🇵')  # Anime entry
+    await msg.add_reaction('🎥')  # Movie entry
+
+    def reaction1check(reaction, user):
+        name1 = str(ctx.author).split("#")[0]
+        return  user.name == name1 and str(reaction.emoji) in ['🇯🇵', '📺', '🎥']
+
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=15, check=reaction1check)
+        if reaction.emoji == '📺':
+            react = 'TV'
+        elif reaction.emoji == '🇯🇵':
+            react = 'Anime'
+        else:
+            react = 'Movie'
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+    # Prompt user to confirm details
+    msg = await ctx.send(f"{ctx.author.mention} Is this correct (Select ✅ or ❌):\nTitle: {title.content} | Tag: {react}")
+    await msg.add_reaction('✅')  # Acknowledge entry
+    await msg.add_reaction('❌')  # Decline entry
+
+    def reaction2check(reaction, user):
+        name1 = str(ctx.author).split("#")[0]
+        return  user.name == name1 and str(reaction.emoji) in ['✅','❌']
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=15, check=reaction2check)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+
+    #Verify confirmation
+    if reaction.emoji == '✅':
+        # Insert entry to user's watchlisttable
+        imageUrl = 'x' # add query for image later (FR)
+        try:
+            mycursor.execute("INSERT INTO activelist (UserID, ShowName, Image, Tag, TableIndex) VALUES (%d, \'%s\', \'%s\', \'%s\', %d)" % (userId, title.content, imageUrl, react, index))
+            mydb.commit()
+            logger.info(f'Watchlist entry added for {ctx.author}')
+            await ctx.send(f"{ctx.author.mention} Added {title.content} to your WatchList!")
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        
+    else:
+        await ctx.send(f"{ctx.author.mention} Didn't confirm entry. Please try !addshow again to create an entry.")
+        return
+    
+# Remove entry from watchlist for user
+@client.command(aliases=['rs', 'Removeshow', 'RemoveShow'])
+async def removeshow(ctx):
+    # Get UserID from Username
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None    
+    myresult = mycursor.fetchall()
+    if len(myresult) == 0:
+        await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
+        return
+    userId = myresult[0][0]
+
+    # Prompt user for show title; timeout after 15 seconds
+    await ctx.send(f"{ctx.author.mention} Enter the name of the show to be removed: ")
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+    try:
+        title = await client.wait_for('message', check=check, timeout=15)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+
+    # Check if show currently exists and get index
+    try:
+        mycursor.execute("SELECT * FROM activelist WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+        logger.info(f'Executed query to return if show exists in activelist for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    userresults = mycursor.fetchall()
+    if not len(userresults):
+        await ctx.send(f"{ctx.author.mention} This show is not in your WatchList. Nothing to remove.")
+        return
+    showIndex = userresults[0][4]
+    
+    # Remove show from WatchList
+    try:
+        mycursor.execute("DELETE FROM activelist WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    mydb.commit()
+    logger.info(f'{ctx.author}\'s Watchlist entry deleted for {title.content}')
+    await ctx.send(f"{ctx.author.mention} Removed WatchList entry for {title.content}")
+
+    # Get list of higher indexed shows to be updated
+    try:
+        mycursor.execute("SELECT * FROM activelist WHERE UserID = %d AND TableIndex > %d" % (userId, showIndex))
+        logger.info(f'Executed query to return list of shows needing to update indices for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    higherResults = mycursor.fetchall()
+    for x in higherResults:
+        # Update indexes by decrementing
+        try:
+            mycursor.execute("UPDATE activelist SET TableIndex = %d WHERE UserID = %d AND TableIndex = %d" % (x[4] - 1, userId, x[4]))
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+    mydb.commit()
+    logger.info(f'Executed query to update indexes for {ctx.author}')
+
+# Query for userID and return Username with their watchhistory if found
+# else, suggest !watchlist to generate entry
+@client.command(aliases=['wh','History', 'WatchHistory', 'watchhistory', 'watchHistory'])
+async def history(ctx):
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+
+    # Check if user exists
+    if len(myresult) == 0:
+        await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
+
+    # Print WatchHistory for user
+    else:
+        logger.info(f'Printing {ctx.author}\'s WatchHistory')
+        userId = myresult[0][0]
+        try:
+            mycursor.execute("SELECT * FROM watchhistory WHERE UserID = \'%s\' ORDER BY Rating DESC" % userId)
+            logger.info(f'Executed query to return WatchHistory entries for {ctx.author}')
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        userresults = mycursor.fetchall()
+        if not len(userresults):
+            await ctx.send(f"{ctx.author.mention} Current list is empty. Please use !addhistory to add to your WatchHistory")
+            return
+        # Embed response
+        embed = discord.Embed(title="Watch History", colour=discord.Colour.random())
+        embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar.url)
+        embed.add_field(name='Title', value='', inline=True)
+        embed.add_field(name='Rating', value='', inline=True)
+        embed.add_field(name='Date', value='', inline=True)
+        # NEEDS WORK
+        count = 1
+        for x in userresults:
+            if count > 7:
+                break
+            embed.add_field(name='', value=x[1], inline=True)
+            embed.add_field(name='', value=x[2], inline=True)
+            embed.add_field(name='', value=x[4], inline=True)
+            count += 1
+
+        await ctx.send(embed=embed)
+
+# Add entry for WatchHistory after completing a show
+@client.command(aliases=['ah','Addhistory', 'AddHistory'])
+async def addhistory(ctx):
+
+    # Get UserID from Username
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+    if len(myresult) == 0:
+        await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
+        return
+    userId = myresult[0][0]
+
+    # Prompt user for show title and sanitize input; timeout after 15 seconds
+    await ctx.send(f"{ctx.author.mention} Enter the show name: ")
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+    try:
+        title = await client.wait_for('message', check=check, timeout=15)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+    # Sanitize input for \'
+    if title.content.find('\'') != -1:
+        await ctx.send("Please ensure you do not include apostrophes or other invalid characters.\nTry !addhistory again.")
+        return
+
+    # Prompt user for show tag
+    msg = await ctx.send(f"{ctx.author.mention} Select the shows tag (TV 📺, Anime 🇯🇵, Movie 🎥): ")
+    await msg.add_reaction('📺')  # TV entry
+    await msg.add_reaction('🇯🇵')  # Anime entry
+    await msg.add_reaction('🎥')  # Movie entry
+
+    def reaction1check(reaction, user):
+        name1 = str(ctx.author).split("#")[0]
+        return  user.name == name1 and str(reaction.emoji) in ['🇯🇵', '📺', '🎥']
+
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=15, check=reaction1check)
+        if reaction.emoji == '📺':
+            react = 'TV'
+        elif reaction.emoji == '🇯🇵':
+            react = 'Anime'
+        else:
+            react = 'Movie'
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+
+    # Prompt user for show rating 1-5; timeout after 15 seconds
+    msg2 = await ctx.send(f"{ctx.author.mention} Enter your rating for {title.content} (1-5): ")
+    await msg2.add_reaction('1️⃣')  # TV entry
+    await msg2.add_reaction('2️⃣')  # Anime entry
+    await msg2.add_reaction('3️⃣')  # Movie entry
+    await msg2.add_reaction('4️⃣')  # TV entry
+    await msg2.add_reaction('5️⃣')  # Anime entry
+
+    def reaction3check(reaction, user):
+        name1 = str(ctx.author).split("#")[0]
+        return  user.name == name1 and str(reaction.emoji) in ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=15, check=reaction3check)
+        if reaction.emoji == '1️⃣':
+            rating = 1
+        elif reaction.emoji == '2️⃣':
+            rating = 2
+        elif reaction.emoji == '3️⃣':
+            rating = 3
+        elif reaction.emoji == '4️⃣':
+            rating = 4
+        else:
+            rating = 5
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+    
+     # Prompt user to confirm details
+    msg = await ctx.send(f"{ctx.author.mention} Is this correct (Select ✅ or ❌):\nTitle: {title.content} | Rating: {rating} | Tag: {react}")
+    await msg.add_reaction('✅')  # Acknowledge entry
+    await msg.add_reaction('❌')  # Decline entry
+
+    def reaction2check(reaction, user):
+        name1 = str(ctx.author).split("#")[0]
+        return  user.name == name1 and str(reaction.emoji) in ['✅','❌']
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=15, check=reaction2check)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+    
+    # Verify confirmation
+    if reaction.emoji == '✅':
+        # Add WatchHistory entry
+        try:
+            today = date.today().strftime("%B %d %y")
+            mycursor.execute("INSERT INTO watchhistory (UserID, ShowName, Rating, Tag, CompletedDate) VALUES (%d, \'%s\', %d, \'%s', \'%s')" % (userId, title.content, rating, react, today))
+            mydb.commit()
+            logger.info(f'WatchHistory entry added for {ctx.author}')
+            response = f"{ctx.author.mention} Added {title.content} to your WatchHistory!"
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+    else:
+        await ctx.send(f"{ctx.author.mention} Didn't confirm entry. Please try !addhistory again to create an entry.")
+        return
+    
+    # Remove entry from WatchList if exists
+    try:
+        mycursor.execute("SELECT * FROM activelist WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+        logger.info(f'Executed query to return if entry exists in activelist for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+    # Entry exists in WatchList if len != 0
+    if len(myresult) != 0:
+        myIndex = myresult[0][4]
+        try:
+            mycursor.execute("DELETE FROM activelist WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+            response += f"\nSince you finished it, also removed {title.content} from your WatchList!"
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        mydb.commit()
+
+        logger.info(f'Removed {title.content} from user\'s WatchList')
+        # Get shows in WatchList with a higher index
+        try:
+            mycursor.execute("SELECT * FROM activelist WHERE UserID = %d AND TableIndex > %d" % (userId, myIndex))
+            logger.info(f'Executed query to return shows needing to update indices for {ctx.author}')
+        except (mysql.connector.Error, mysql.connector.Warning) as e:
+            await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+            logger.warning(e)
+            return None
+        higherResults = mycursor.fetchall()
+        for x in higherResults:
+            # Update indexes by decrementing
+            try:
+                mycursor.execute("UPDATE activelist SET TableIndex = %d WHERE UserID = %d AND TableIndex = %d" % (x[4] - 1, userId, x[4]))
+            except (mysql.connector.Error, mysql.connector.Warning) as e:
+                await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+                logger.warning(e)
+                return None
+        mydb.commit()
+        logger.info(f'Executed query to update indices for {ctx.author}')
+    await ctx.send(response)
+    
+# Remove entry from WatchHistory for user
+@client.command(aliases=['rh', 'Removehistory', 'RemoveHistory'])
+async def removehistory(ctx):
+    # Get UserID from Username
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT * FROM userlist WHERE Username = \"%s\"" % str(ctx.author))
+        logger.info(f'Executed query to return UserID for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    myresult = mycursor.fetchall()
+    if len(myresult) == 0:
+        await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
+        return
+    userId = myresult[0][0]
+
+    # Prompt user for show title; timeout after 15 seconds
+    await ctx.send(f"{ctx.author.mention} Enter the name of the show to be removed: ")
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+    try:
+        title = await client.wait_for('message', check=check, timeout=15)
+    except asyncio.TimeoutError:
+        await ctx.send(f"{ctx.author.mention} Timeout exceeded. Please try again.")
+        return
+
+    # Check if show currently exists
+    try:
+        mycursor.execute("SELECT * FROM watchhistory WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+        logger.info(f'Executed query to check if show exists in WatchHistory for {ctx.author}')
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    userresults = mycursor.fetchall()
+    if not len(userresults):
+        await ctx.send(f"{ctx.author.mention} This show is not in your WatchHistory. Nothing to remove.")
+        return
+    
+    # Remove show from WatchHistory
+    try:
+        mycursor.execute("DELETE FROM watchhistory WHERE UserID = %d AND ShowName = \'%s\'" % (userId, title.content))
+    except (mysql.connector.Error, mysql.connector.Warning) as e:
+        await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
+        logger.warning(e)
+        return None
+    mydb.commit()
+    logger.info(f'{ctx.author}\'s WatchHistory entry deleted for {title.content}')
+    await ctx.send(f"{ctx.author.mention} Removed WatchHistory entry for {title.content}")
+                
+#------------------------------------------------------------------------------------------------
+
 # Dollar Diagnostic Commands
 
 # Make a post of dollars latest features(ADMIN only)
@@ -1086,7 +1600,7 @@ async def patch(ctx):
 async def help(ctx, category=None):
 
     if category is None:
-        desc = "Available categories: music, game. Use either !help music or !help game"
+        desc = "Available categories: music, game. Use either !help music or !help game or !help mywatchlist"
         embed = discord.Embed(title='Which commands?', description=desc, colour=0x2ecc71)
         embed.set_author(name='Dollar')
         file_path = os.path.join("images", "dollar3.png")
@@ -1120,8 +1634,21 @@ async def help(ctx, category=None):
         embed.set_thumbnail(url="attachment://dollar3.png")
         embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
         await ctx.send(embed=embed, file=img)
+    elif category.lower() == "mywatchlist":
+        file_path = os.path.join("markdown", "watchlistCommands.md")
+        if os.path.isfile(file_path):
+            with open(file_path, "r") as file:
+                commands = file.read()
+
+        embed = discord.Embed(title='MyWatchList Commands', description=commands, colour=0x2ecc71)
+        embed.set_author(name='Dollar')
+        file_path = os.path.join("images", "dollar3.png")
+        img = discord.File(file_path, filename='dollar3.png')
+        embed.set_thumbnail(url="attachment://dollar3.png")
+        embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+        await ctx.send(embed=embed, file=img)
     else:
-        await ctx.send("Invalid category. Available categories: music, game")
+        await ctx.send("Invalid category. Available categories: music, game, mywatchlist")
 
 # Admin only, see Dollar's current threads
 @client.command()
