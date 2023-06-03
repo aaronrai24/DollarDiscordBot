@@ -85,9 +85,35 @@ async def on_ready():
         logger.info(f'Synced {len(synced)} command(s)')
     except Exception as e:
         logger.error(f'{e}')
-    
+
     for guild in client.guilds:
         logger.info(f'Dollar loaded in {guild.name}, owner: {guild.owner}')
+        channel = guild.system_channel # Notify guild's default system channel set in Discord settings
+        if channel is not None:
+            try:
+                file_path = os.path.join("markdown", "patch_notes.md")
+                if os.path.isfile(file_path):
+                    with open(file_path, "r") as file:
+                        desc = file.read()
+
+                embed = discord.Embed(
+                    title='Patch: 1.1',
+                    url='https://en.wikipedia.org/wiki/Dollar',
+                    description=desc,
+                    colour=discord.Color.green()
+                )
+                embed.set_author(name='Dollar')
+                file_path = os.path.join("images", "dollar.png")
+                img = discord.File(file_path, filename='dollar.png')
+                embed.set_thumbnail(url="attachment://dollar.png")
+                embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
+
+                await channel.send(embed=embed, file=img)
+                logger.info(f'Notified {guild.name} of dollar\'s latest update.')
+            except discord.Forbidden:
+                logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
+            except discord.HTTPException:
+                logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
 
 
 async def connect_nodes():
@@ -1058,28 +1084,6 @@ async def leagueoflegends(ctx, player_id):
 #------------------------------------------------------------------------------------------------
 
 # Dollar Diagnostic Commands
-
-# Make a post of dollars latest features(ADMIN only)
-@client.command()
-@commands.has_role(ADMIN)
-async def patch(ctx):
-    with open('patch_notes.md', 'r') as file:
-        desc = file.read()
-
-    channel = client.get_channel(1096695017755644004)  # patches channel
-    embed = discord.Embed(
-        title='Patch: 1.1',
-        url='https://en.wikipedia.org/wiki/Dollar',
-        description=desc,
-        colour=discord.Color.green()
-    )
-    embed.set_author(name='Dollar')
-    file_path = os.path.join("images", "dollar.png")
-    img = discord.File(file_path, filename='dollar.png')
-    embed.set_thumbnail(url="attachment://dollar.png")
-    embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
-
-    await channel.send(embed=embed, file=img)
 
 # See all of dollars commands
 @client.command()
