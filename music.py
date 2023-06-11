@@ -82,7 +82,7 @@ mydb = mysql.connector.connect(
     host="localhost",
     user= os.getenv('DB_USER'),
     password= os.getenv('DB_PW'),
-    database="cash")
+    database=os.getenv('DB_SCHEMA'))
 
 # Authenticate your application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
@@ -108,7 +108,7 @@ async def on_ready():
                         desc = file.read()
 
                 embed = discord.Embed(
-                    title='Patch: 1.1',
+                    title='Patch: 1.1.1',
                     url='https://en.wikipedia.org/wiki/Dollar',
                     description=desc,
                     colour=discord.Color.green()
@@ -339,6 +339,43 @@ async def featurerequest(interaction: discord.Interaction, feature_title: str, f
     except discord.errors.Forbidden:
         logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
 
+# /ticket, Open an issue in the mfDiscord(get access to the #issues channel)
+@client.tree.command(name='ticket', description='Open a issue with the developers when you are having issues with Dollar')
+async def ticket(interaction: discord.Interaction):
+    author = interaction.user
+    server = interaction.guild
+    
+    # Check if user has exceeded rate limit
+    now = time.time()
+    user_info = user_usage[author.id]
+    if now - user_info['timestamp'] < 3600 and user_info['count'] >= 3:
+        await interaction.response.send_message('You have exceeded the rate limit for this command. Please try again later.', ephemeral=True)
+        return
+    
+    # Update user usage information
+    user_info['timestamp'] = now
+    user_info['count'] += 1
+
+    guild_id = 261351089864048645
+    mfDiscord = discord.utils.get(client.guilds, id=guild_id)
+    issues_channel = discord.utils.get(mfDiscord.text_channels, name='issues')
+
+    if not issues_channel:
+        await interaction.response.send_message('The issues channel could not be found, please try again later.', ephemeral=True)
+        return
+
+    # Create an invite with a 30-minute expiration for the issues channel
+    invite = await issues_channel.create_invite(max_age=1800, unique=True)
+
+    # Send the invite as a direct message to the user
+    try:
+        await author.send(f"Here's your invite link to the #issues channel: {invite}")
+        await interaction.response.send_message('An invite link has been sent to your DMs.', ephemeral=True)
+        logger.info(f'Issue likely occured in {server}, author: {author}')
+    except discord.Forbidden:
+        await interaction.response.send_message('I cannot send you the invite link because you have disabled DMs.', ephemeral=True)
+        logger.warning(f'{author} has likely disabled DMs' )
+
 # Events, load wavelink node, play next song in queue
 @client.event
 async def on_wavelink_node_ready(node: wavelink.Node):
@@ -388,13 +425,13 @@ async def on_scheduled_event_update(before, after):
             mentioned_users.append(user.mention)
             logger.info(f'{user} is interested, allowing them to connect to {channel}')
         mention_string = ' '.join(mentioned_users)
-        await channel.send(f"The event has started! {mention_string}, you can now join the voice channel.")
+        await channel.send(f"The event [{after.name}] has started! {mention_string}, you can now join the voice channel.")
     elif start == 'EventStatus.active' and current == 'EventStatus.completed':
         #Event has completed
         logger.info(f'Event [{after.name}] in {after.guild} has completed')
-        async for user in users:
-            await channel.set_permissions(user, connect=False)
-            logger.info(f'No longer allowing {user} to connect to {channel}')
+        await channel.edit(sync_permissions=True)
+        await channel.set_permissions(channel.guild.default_role, connect=False)
+        logger.info(f'Revoked access to {channel} for all users')
 
 # Add interested users to connect to event channel
 @client.event
@@ -454,14 +491,12 @@ async def on_voice_state_update(member, before, after):
     ctxbefore = before.channel
     ctxafter = after.channel
     guild = client.get_guild(member.guild.id)
+    user = str(member.display_name)
     channel = discord.utils.get(guild.channels, name='JOIN HERE💎')
     comchannel = discord.utils.get(guild.channels, name='commands')
+    
     if channel is not None:
-        category = channel.category_id
-    else:
-        logger.warn(f'{guild} is not using auto-channel creation, JOIN HERE💎 channel does not exist')
-    user = str(member).split("#")[0]
-
+        category = channel.category_id    
     if str(member) == 'Dollar#5869':
         dollar = member.id
     else:
@@ -534,6 +569,34 @@ async def on_voice_state_update(member, before, after):
 #------------------------------------------------------------------------------------------------
 
 # Functions
+
+# Function to execute the validation query
+def validate_connection():
+    try:
+        cursor = mydb.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchall()
+        cursor.close()
+        logger.debug('Executed validation query')
+        return True
+    except mysql.connector.Error as error:
+        # Handle the error appropriately (e.g., logging, error message)
+        logger.error("Error validating connection: %s", error)
+        return False
+
+# Periodically validate the connection
+def keep_alive():
+    while True:
+        if not validate_connection():
+            # Re-establish the connection
+            logger.info("Reconnecting to MySQL database")
+            mydb.reconnect()
+        # Wait for a certain interval before validating again
+        time.sleep(60)  # 60 seconds
+
+# Keep MySQL connection open buy run in its own thread
+keep_alive_thread = threading.Thread(target=keep_alive)
+keep_alive_thread.start()
 
 # Inactivity Checker, disconnect dollar after 10 minutes
 async def idle_checker(vc, comchannel, guild):
@@ -893,17 +956,23 @@ async def load(ctx):
 
 @client.command(aliases=['generatePlaylist', 'GeneratePlaylist', 'genplay', 'genPlay'])
 @is_connected_to_same_voice()
-async def generateplaylist(ctx, playlist_type, artist=None, album=None):
+async def generateplaylist(ctx, playlist_type=None, artist=None, album=None):
     vc = ctx.voice_client
     count = 0
     offset = random.randint(0, 1000)
 
-    query = f'genre:{playlist_type}'
+    query = ''
+    if playlist_type:
+        query += f'genre:{playlist_type}'
     if artist:
         query += f' artist:{artist}'
     if album:
         query += f' album:{album}'
 
+    if not query:
+        await ctx.send('Please provide at least one parameter.')
+        logger.warning('No filters entered, exiting method')
+        return
     logger.info(f'Spotify Generating Playlist, Parameters: Genre: {playlist_type}, Artist: {artist}, Album: {album}')
     results = sp.search(q=query, type='track', limit=25, offset=offset)
     logger.info('Spotify Playlist Generation complete, querying songs...')
@@ -1655,7 +1724,7 @@ async def help(ctx, category=None):
 
 # Admin only, see Dollar's current threads
 @client.command()
-@commands.has_role(ADMIN)
+@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
 async def threaddump(ctx):
     logger.info('START THREAD DUMP')
     thread_list = threading.enumerate()
@@ -1692,6 +1761,26 @@ async def threaddump(ctx):
         await channel.send(file=dump_file)
 
     logger.info('FINISH THREAD DUMP')
+
+# Admin and mod only, see Dollar's current logs
+@client.command()
+@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
+async def logs(ctx):
+    logger.info('START LOG DOWNLOAD')
+
+    log_file_name = 'discord.log'
+    log_file_path = os.path.join(os.getcwd(), log_file_name)
+
+    if not os.path.isfile(log_file_path):
+        await ctx.send(f"Log file '{log_file_name}' not found.")
+        return
+
+    channel = ctx.channel
+    with open(log_file_path, 'rb') as file:
+        log_file = discord.File(file, filename=log_file_name)
+        await channel.send(file=log_file)
+
+    logger.info('FINISH LOG DOWNLOAD')
 
 #------------------------------------------------------------------------------------------------
 
