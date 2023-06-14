@@ -83,11 +83,7 @@ mydb = mysql.connector.connect(
     host="localhost",
     user= os.getenv('DB_USER'),
     password= os.getenv('DB_PW'),
-<<<<<<< HEAD
-    database= os.getenv('DB_SCHEMA'))
-=======
     database=os.getenv('DB_SCHEMA'))
->>>>>>> main
 
 # Authenticate your application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
@@ -499,7 +495,6 @@ async def on_voice_state_update(member, before, after):
     user = str(member.display_name)
     channel = discord.utils.get(guild.channels, name='JOIN HERE💎')
     comchannel = discord.utils.get(guild.channels, name='commands')
-    
     if channel is not None:
         category = channel.category_id    
     if str(member) == 'Dollar#5869':
