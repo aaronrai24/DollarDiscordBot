@@ -22,7 +22,7 @@ import mysql.connector
 from bs4 import BeautifulSoup
 from datetime import date
 from pandas import *
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from lyricsgenius import Genius
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -83,7 +83,7 @@ mydb = mysql.connector.connect(
     host="localhost",
     user= os.getenv('DB_USER'),
     password= os.getenv('DB_PW'),
-    database=os.getenv('DB_SCHEMA'))
+    database= os.getenv('DB_SCHEMA'))
 
 # Authenticate your application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
@@ -92,6 +92,7 @@ sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 @client.event
 async def on_ready():
     client.loop.create_task(connect_nodes())
+    validate_db.start()
     try:
         synced = await client.tree.sync()
         logger.info(f'Synced {len(synced)} command(s)')
@@ -120,7 +121,7 @@ async def on_ready():
                 embed.set_thumbnail(url="attachment://dollar.png")
                 embed.set_footer(text='Feature request? Bug? Please report it by using /reportbug or /featurerequest')
 
-                #await channel.send(embed=embed, file=img)
+                await channel.send(embed=embed, file=img)
                 logger.info(f'Notified {guild.name} of dollar\'s latest update.')
             except discord.Forbidden:
                 logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
@@ -493,7 +494,6 @@ async def on_voice_state_update(member, before, after):
     ctxafter = after.channel
     guild = client.get_guild(member.guild.id)
     user = str(member.display_name)
-    print(member.nick)
     channel = discord.utils.get(guild.channels, name='JOIN HERE💎')
     comchannel = discord.utils.get(guild.channels, name='commands')
     if channel is not None:
@@ -572,7 +572,7 @@ async def on_voice_state_update(member, before, after):
 # Functions
 
 # Function to execute the validation query
-def validate_connection():
+async def validate_connection():
     try:
         cursor = mydb.cursor()
         cursor.execute("SELECT 1")
@@ -581,23 +581,13 @@ def validate_connection():
         logger.debug('Executed validation query')
         return True
     except mysql.connector.Error as error:
-        # Handle the error appropriately (e.g., logging, error message)
-        logger.error("Error validating connection: %s", error)
+        logger.error(f'Error validating connection: {error}')
         return False
 
 # Periodically validate the connection
-def keep_alive():
-    while True:
-        if not validate_connection():
-            # Re-establish the connection
-            logger.info("Reconnecting to MySQL database")
-            mydb.reconnect()
-        # Wait for a certain interval before validating again
-        time.sleep(60)  # 60 seconds
-
-# Keep MySQL connection open buy run in its own thread
-keep_alive_thread = threading.Thread(target=keep_alive)
-keep_alive_thread.start()
+@tasks.loop(seconds=60)
+async def validate_db():
+    await validate_connection()
 
 # Inactivity Checker, disconnect dollar after 10 minutes
 async def idle_checker(vc, comchannel, guild):
