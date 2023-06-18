@@ -18,8 +18,8 @@ import spotipy
 import requests
 import json
 import mysql.connector
-from bs4 import BeautifulSoup
 
+from bs4 import BeautifulSoup
 from datetime import date
 from pandas import *
 from discord.ext import commands
@@ -493,6 +493,7 @@ async def on_voice_state_update(member, before, after):
     ctxafter = after.channel
     guild = client.get_guild(member.guild.id)
     user = str(member.display_name)
+    print(member.nick)
     channel = discord.utils.get(guild.channels, name='JOIN HERE💎')
     comchannel = discord.utils.get(guild.channels, name='commands')
     if channel is not None:
@@ -811,7 +812,7 @@ async def getShowRating(ctx, showTitle):
 # Get image result URL from the show's title
 def getShowUrl(res, tag):
     searchName = res.replace(" ", "+")
-    url = f'https://www.google.com/search?q={searchName}+ {tag}&tbm=isch'
+    url = f'https://www.google.com/search?q={searchName}+{tag}&tbm=isch'
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -1487,7 +1488,7 @@ async def removeshow(ctx):
     await getIndicesAndUpdate(ctx, userid, showIndex, -1, '>', None)
 
 # Edit order of WatchList queue for user
-@client.command(aliases=['eo', 'edit', 'editOrder', 'EditOrder', 'Editorder'])
+@client.command(aliases=['eo', 'edit', 'editOrder', 'EditOrder', 'Editorder', 'editshow'])
 async def editorder(ctx):
     # Get User ID
     userid = await getUserId(ctx)
@@ -1570,19 +1571,31 @@ async def editorder(ctx):
 
 # Print user's WatchHistory if found, else suggest !watchlist to generate entry
 @client.command(aliases=['wh','History', 'WatchHistory', 'watchhistory', 'watchHistory'])
-async def history(ctx):
+async def history(ctx, filter=None):
     # Get User ID
     userid = await getUserId(ctx)
     if userid == -1:
         await ctx.send(f'{ctx.author.mention} User does not exist. Try !watchlist to setup user.')
         return
+    
+    # Apply filters
+    if filter == None:
+        queryFilter = 'ORDER BY Rating DESC'
+    elif filter.lower() == "name":
+        queryFilter = "ORDER BY ShowName ASC"
+    elif filter.lower() in ['anime', 'movie', 'tv']:
+        queryFilter = 'AND Tag = \'%s\' ORDER BY Rating DESC' % filter.lower()
+    elif filter.lower() == 'date':
+        queryFilter = 'ORDER BY Date DESC'
+    else:
+        queryFilter = 'ORDER BY Rating DESC'
 
     # Get WatchHistory results for user
     mycursor = mydb.cursor()
     logger.info(f'Printing {ctx.author}\'s WatchHistory')
     try:
         logger.info(f'Executing query to return WatchHistory entries for {ctx.author}')
-        mycursor.execute("SELECT * FROM watchhistory WHERE UserID = \'%s\' ORDER BY Rating DESC" % userid)
+        mycursor.execute("SELECT * FROM watchhistory WHERE UserID = \'%s\' %s" % (userid, queryFilter))
     except (mysql.connector.Error, mysql.connector.Warning) as e:
         await ctx.send(f"{ctx.author.mention} An error occurred. Please try again or use /reportbug to submit an issue.")
         logger.warning(e)
