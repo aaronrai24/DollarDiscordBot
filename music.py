@@ -1586,7 +1586,7 @@ async def history(ctx, filter=None):
         queryFilter = "ORDER BY ShowName ASC"
     elif filter.lower() in ['anime', 'movie', 'tv']:
         queryFilter = 'AND Tag = \'%s\' ORDER BY Rating DESC' % filter.lower()
-    elif filter.lower() == 'Date':
+    elif filter.lower() == 'date':
         queryFilter = 'ORDER BY Date DESC'
     else:
         queryFilter = 'ORDER BY Rating DESC'
