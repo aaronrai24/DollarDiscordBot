@@ -427,13 +427,14 @@ async def on_scheduled_event_update(before, after):
             mentioned_users.append(user.mention)
             logger.info(f'{user} is interested, allowing them to connect to {channel}')
         mention_string = ' '.join(mentioned_users)
-        await channel.send(f"The event [{after.name}] has started! {mention_string}, you can now join the voice channel.")
+        await channel.send(f"The event, {after.name} has started! {mention_string}, you can now join the voice channel.")
+        await channel.set_permissions(channel.guild.default_role, connect=False)
     elif start == 'EventStatus.active' and current == 'EventStatus.completed':
         #Event has completed
         logger.info(f'Event [{after.name}] in {after.guild} has completed')
         await channel.edit(sync_permissions=True)
-        await channel.set_permissions(channel.guild.default_role, connect=False)
-        logger.info(f'Revoked access to {channel} for all users')
+        await channel.set_permissions(channel.guild.default_role, connect=True)
+        logger.info(f'Reset channel permissions and granted access to {channel} for all users')
 
 # Add interested users to connect to event channel
 @client.event
