@@ -4,3 +4,4 @@ Dollar 1.1.2 aims to eliminate additional pesky bugs to enhance the user experie
 
 **Fixes:**
 - Fix to MySQL connection timing out, last attempt at a validation query would cause Dollar's terminal to freeze due to threads not being cleaned up. Refactored to use tasks.loop rather than manually creating a thread. Tasks.loop run in the background of the main event thread and is essentially the same creating a thread for this task.
+- Fix to Event permissions, now users are granted access to Shows📺 by default. If you create and start an event, 'interested' users will be given access to join the channel when the event starts, while restricting access for everone who is 'uninterested'
