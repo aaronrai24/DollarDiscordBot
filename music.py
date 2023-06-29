@@ -369,6 +369,14 @@ async def ticket(interaction: discord.Interaction):
     # Create an invite with a 30-minute expiration for the issues channel
     invite = await issues_channel.create_invite(max_age=1800, unique=True)
 
+    channel = await client.fetch_channel('1117217882070323291')
+    dev_role_id = 1112192013903872100
+    qa_role_id = 1097642643133051032
+
+    dev_role_mention = f'<@&{dev_role_id}>'
+    qa_role_mention = f'<@&{qa_role_id}>'
+
+    message = await channel.send(f'Issue occurred while using Dollar for {author}. {dev_role_mention}{qa_role_mention} Please grant {author} access to view this channel.')
     # Send the invite as a direct message to the user
     try:
         await author.send(f"Here's your invite link to the #issues channel: {invite}")
