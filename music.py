@@ -110,7 +110,7 @@ async def on_ready():
                         desc = file.read()
 
                 embed = discord.Embed(
-                    title='Patch: 1.1.1',
+                    title='Patch: 1.1.2',
                     url='https://en.wikipedia.org/wiki/Dollar',
                     description=desc,
                     colour=discord.Color.green()
@@ -979,15 +979,28 @@ async def resume(ctx):
 @is_connected_to_same_voice()
 async def nowplaying(ctx):
     vc = ctx.voice_client
-    if vc:
-        try:
-            track = str(vc.track)
-            await ctx.send(f'Currently playing: {track}')
-            logger.info(f'Current playing track: {track}')
-        except:
-            await ctx.send('Nothing is currently playing, add a song by using !play or !playsc')
+    track = str(vc.track)
+
+    if vc.is_playing():
+        async with ctx.typing():
+            while True:
+                try:
+                    logger.info(f'Relaying current playing song: {track} by {artist}')
+                    song = genius.search_song(track, artist)
+                    break
+                except TimeoutError:
+                    logger.warning('GET request timed out, retrying...')
+            if song == None:
+                await ctx.send('Unable to find current playing song on Genius, please try again...')
+            else:
+                embed = discord.Embed(title=song.title, url=song.url, description=f'Currently playing {song.full_title}', colour=discord.Colour.random())
+                embed.set_author(name=f"{song.artist}")
+                embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
+                embed.set_footer()
+                logger.info('Current song information loaded from Genius API')
+                await ctx.send(embed=embed)
     else:
-        await ctx.send("The bot is not connected to a voice channel")
+        await ctx.send('There are no songs currently play, you can queue one by using !play or !playsc')
 
 # Show whats next in the queue
 @client.command(aliases=['Next', 'nextsong'])
@@ -1859,7 +1872,7 @@ async def clearhistory(ctx):
 async def help(ctx, category=None):
 
     if category is None:
-        desc = "Available categories: music, game. Use either !help music or !help game or !help mywatchlist"
+        desc = "Available categories: music, game, mywatchlist. Use either !help music or !help game or !help mywatchlist"
         embed = discord.Embed(title='Which commands?', description=desc, colour=0x2ecc71)
         embed.set_author(name='Dollar')
         file_path = os.path.join("images", "dollar3.png")
