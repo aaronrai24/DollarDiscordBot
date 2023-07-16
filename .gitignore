@@ -113,6 +113,7 @@ application.yml
 Lavalink.jar
 logs/
 *.csv
+.vscode
 
 
 # Spyder project settings
