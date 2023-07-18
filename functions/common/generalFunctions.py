@@ -1,6 +1,6 @@
 from ..common.libraries import(
     discord, logging, commands, wavelink, os, mysql,
-    asyncio
+    asyncio, pooling
 )
 
 class CustomPlayer(wavelink.Player):
@@ -18,7 +18,7 @@ def setup_logger(logger_name):
     )
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     return logger
 
 logger = setup_logger('core')
@@ -46,13 +46,17 @@ def is_connected_to_voice():
 
 def connect_to_database():
     try:
-        mydb = mysql.connector.connect(
+        connection_pool = pooling.MySQLConnectionPool(
+            pool_name="mydb_pool",
+            pool_size=8,
             host="localhost",
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PW'),
             database=os.getenv('DB_SCHEMA')
         )
         logger.info("Connected to the database successfully.")
+        mydb = connection_pool.get_connection()
+        logger.debug("Acquired a database connection from the connection pool.")
         return mydb
     except mysql.connector.Error as err:
         logger.error("Failed to connect to the database: %s", err)
