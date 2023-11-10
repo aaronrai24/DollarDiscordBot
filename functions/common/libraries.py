@@ -1,4 +1,12 @@
-# Import all libraries here and Global variables here
+"""
+DESCRIPTION: All file imports, global variables, auth tokens reside here
+Ok to ignore unused libraries
+"""
+#pylint: disable=unused-import
+#pylint: disable=redefined-builtin
+#pylint: disable=wildcard-import
+#pylint: disable=ungrouped-imports
+#pylint: disable=unused-wildcard-import
 import discord
 import os
 import wavelink
@@ -32,8 +40,8 @@ load_dotenv()
 # Global Variables
 ADMIN = '⚡️'
 MOD = '🌩️'
-artist = ''
-CREATEDCHANNELS = []
+artist = '' #pylint: disable=invalid-name
+created_channels = []
 START_TIME = time.time()
 user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
 
