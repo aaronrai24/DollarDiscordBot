@@ -1,13 +1,21 @@
-Dollar 1.1.3 introduces significant improvements to Dollar's codebase, aimed at enhancing readability and overall performance. However, as with any major update, there is a possibility of new bugs being introduced. To address this, we have implemented comprehensive logging to better track and address any issues that may arise. If you encounter any bugs, we encourage you to utilize the `/reportbug` command and provide us with details.
+Dollar 1.1.4 represents a significant cleanup effort, addressing lingering issues from its earlier, smaller-scale iterations. We are thrilled to announce that a major update is in the works, bringing with it exciting new features.
 
-**New Features:**
+## Roadmap Highlights
 
-*Added to auto-channel creation*
-- Now when users create a channel they have permission to 'Manage Channel', giving the channel creator the abillity to set permissions for their own voice channel. This allows members to change the channel name, description and voice setings as they see fit. *Only applies to their own channel and not all discord channels*
+Our future plans include a deeper integration with the Spotipy API, opening up new possibilities for Dollar's functionality. In the upcoming update, our goal is to elevate Dollar beyond being just Cash's personal assistant to a tool that caters to everyone's needs. Imagine automating daily tasks such as checking scores, monitoring the weather, and estimating commute times for work.
 
+Stay tuned for Dollar 2.0 and the transformative enhancements that await!
 
-**Fixes:**
-- Restructured the main file into multiple files, organizing them based on command types. These files are then loaded as cogs into the main program.
-- Removed the /ping command as it is no longer necessary. Dollar now incorporates enhanced measures to ensure its availability.
-- Implemented standardized loggers for each command category, facilitating better error tracking and troubleshooting.
-- Changed MySQL connection from a single connection source to a connection pool, by using a connection pool, we can efficiently manage and reuse connections, which can improve performance when multiple requests need to access the database simultaneously.
+## Fixes and Enhancements
+
+### Consistent Coding and Improved Contribution Process
+
+- Pylinted the entire Dollar code base to ensure consistent coding practices and a cleaner programming environment. This makes contributing to Dollar significantly more accessible and streamlined.
+
+### Enhanced User Experience
+
+- Resolved an issue where Dollar would persistently remain active, even after 10 minutes of inactivity.
+- Resolved an issue where patch notes would not display on startup.
+- Add shutting down warnings for Dollar goes inactive, this will also ping @Cash to notifiy of a unplanned shutdown.
+
+We appreciate your support and look forward to unveiling Dollar 2.0 with its enhanced capabilities. Join us on this journey to make Dollar an indispensable tool for everyone's daily tasks.
