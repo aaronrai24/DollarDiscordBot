@@ -7,7 +7,7 @@ from ..common.libraries import (
 	MOD, START_TIME, user_usage, GITHUB_TOKEN
 )
 from ..common.generalfunctions import(
-	setup_logger
+	setup_logger, send_embed
 )
 
 logger = setup_logger("diagnostic")
@@ -274,52 +274,25 @@ class Debugging(commands.Cog):
 
 		if category is None:
 			desc = "Available categories: music, game, mywatchlist. Use either !help music or !help game or !help mywatchlist"
-			embed = discord.Embed(title="Which commands?", description=desc, colour=0x2ecc71)
-			embed.set_author(name="Dollar")
-			file_path = os.path.join("images", "dollar3.png")
-			img = discord.File(file_path, filename="dollar3.png")
-			embed.set_thumbnail(url="attachment://dollar3.png")
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
-			await ctx.send(embed=embed, file=img)
+			await send_embed("Which commands?", "dollar3.png", desc, ctx)
 		elif category.lower() == "music":
 			file_path = os.path.join("markdown", "musicCommands.md")
 			if os.path.isfile(file_path):
 				with open(file_path, "r", encoding="utf-8") as file:
 					bot_commands = file.read()
-
-			embed = discord.Embed(title="Music Commands", description=bot_commands, colour=0x2ecc71)
-			embed.set_author(name="Dollar")
-			file_path = os.path.join("images", "dollar3.png")
-			img = discord.File(file_path, filename="dollar3.png")
-			embed.set_thumbnail(url="attachment://dollar3.png")
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
-			await ctx.send(embed=embed, file=img)
+			await send_embed("Music Commands", "dollar3.png", bot_commands, ctx)
 		elif category.lower() == "game":
 			file_path = os.path.join("markdown", "gameCommands.md")
 			if os.path.isfile(file_path):
 				with open(file_path, "r", encoding="utf-8") as file:
 					game_commands = file.read()
-
-			embed = discord.Embed(title="Game Commands", description=game_commands, colour=0x2ecc71)
-			embed.set_author(name="Dollar")
-			file_path = os.path.join("images", "dollar3.png")
-			img = discord.File(file_path, filename="dollar3.png")
-			embed.set_thumbnail(url="attachment://dollar3.png")
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
-			await ctx.send(embed=embed, file=img)
+			await send_embed("Music Commands", "dollar3.png", game_commands, ctx)
 		elif category.lower() == "mywatchlist":
 			file_path = os.path.join("markdown", "watchlistCommands.md")
 			if os.path.isfile(file_path):
 				with open(file_path, "r", encoding="utf-8") as file:
 					watchlist_commands = file.read()
-
-			embed = discord.Embed(title="MyWatchList Commands", description=watchlist_commands, colour=0x2ecc71)
-			embed.set_author(name="Dollar")
-			file_path = os.path.join("images", "dollar3.png")
-			img = discord.File(file_path, filename="dollar3.png")
-			embed.set_thumbnail(url="attachment://dollar3.png")
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
-			await ctx.send(embed=embed, file=img)
+			await send_embed("Music Commands", "dollar3.png", watchlist_commands, ctx)
 		else:
 			await ctx.send("Invalid category. Available categories: music, game, mywatchlist")
 
@@ -385,17 +358,33 @@ class Debugging(commands.Cog):
 	@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
 	async def logging(self, ctx, level):
 		level = getattr(logging, level.upper(), None)
-		if level == 20:
-			logging.getLogger("discord.gateway").setLevel(logging.WARNING)
 		if level is None:
 			await ctx.send("Invalid logging level provided.")
 			return
-
-		for name in logging.root.manager.loggerDict.items():
-			if isinstance(name, logging.Logger):
+		#pylint: disable=redefined-outer-name
+		for name, logger in logging.root.manager.loggerDict.items():
+			if isinstance(logger, logging.Logger):
+				logger.info(f"Setting {name} to {level}")
 				logger.setLevel(level)
 
 		await ctx.send(f"Logging level set to {level}.")
+
+	@commands.command()
+	@commands.is_owner()
+	async def shutdown(self, ctx):
+		try:
+			logger.info("Starting shut down...")
+			await ctx.send(f"{ctx.author.mention} Dollar is shutting down...")
+
+			for task in asyncio.all_tasks():
+				task.cancel()
+				logger.debug(f"Shutdown task: {task}")
+			logger.debug("Closing database connection...")
+			self.bot.mydb.close()
+			logger.info("Database connection closed")
+			await self.bot.close()
+		except Exception as e:
+			logger.error(f"An error occured during shutdown {e}")
 
 async def setup(bot):
 	await bot.add_cog(Debugging(bot))

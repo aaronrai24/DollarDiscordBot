@@ -8,7 +8,7 @@ from functions.common.libraries import(
 )
 from functions.common.generalfunctions import(
 	setup_logger, send_patch_notes, connect_to_database,
-	validate_connection, idle_checker
+	validate_connection, idle_checker, send_embed, send_embed_error
 )
 
 # load environment
@@ -146,12 +146,13 @@ async def on_message(message):
 
 	if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
 		logger.info(f"{author} sent a DM to Dollar")
-		msg = '''Read the readme at this link:
-		https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md, if you still'''
-		msg2 = '''If you still have questions, go to a discord I am in and use /ticket
-		to submit a request and interact with my devs.'''
-		await message.author.send(msg)
-		await message.author.send(msg2)
+		msg = '''Checkout this readme:
+		(https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md)'''
+		#pylint: disable=long-line
+		msg2 = '''If you still have questions, go to a discord I am in 
+		and use /ticket to submit a request and interact with my devs.'''
+		await send_embed("Welcome to Dollar", "dollar.png", msg, message.author)
+		await send_embed("For more questions...", "dollar.png", msg2, message.author)
 
 	if channel.startswith("commands") or channel.startswith("test"):
 		if msg.startswith("!"):
@@ -279,17 +280,27 @@ async def validate_db():
 @client.event
 async def on_command_error(ctx, error):
 	if isinstance(error, commands.MissingRole):
-		await ctx.send("Missing required role to use this command.")
+		await send_embed_error("Missing Required Role", error, ctx)
 		logger.error("User has insufficient role")
 	elif isinstance(error, commands.CommandNotFound):
-		await ctx.send("Command not found.")
+		await send_embed_error("Command Not Found", error, ctx)
 		logger.error("User tried to use a command that does not exist")
 	elif isinstance(error, commands.BadArgument):
-		await ctx.send("Invalid argument.")
+		await send_embed_error("Invalid argument", error, ctx)
 		logger.error("User provided an invalid argument")
 	elif isinstance(error, commands.CheckFailure):
-		await ctx.send("Insufficient Permissions to use this command.")
-		logger.error("User has insufficient permissions")
+		await send_embed_error("Incorrect Command Usage", error, ctx)
+		logger.error("User used command incorrectly")
+	elif isinstance(error, discord.errors.PrivilegedIntentsRequired):
+		await send_embed_error("Missing Required Intent", error, ctx)
+		logger.error("Bot is missing required intent")
+	elif isinstance(error, commands.CommandOnCooldown):
+		await send_embed_error("Command Cooldown", error, ctx)
+		logger.warning(f"Command on cooldown for user {ctx.author}")
+	else:
+		msg = "An unexpected error occurred while processing your command. Please use /ticket."
+		await send_embed_error("Unexpected Error", msg, ctx)
+		logger.exception("Unexpected error occurred", exc_info=error)
 
 # Run bot
 client.run(DISCORD_TOKEN)

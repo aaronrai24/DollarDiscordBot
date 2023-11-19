@@ -18,6 +18,15 @@ class CustomPlayer(wavelink.Player):
 		self.queue = wavelink.Queue()
 
 def setup_logger(logger_name):
+	"""
+    Set up and configure a rotating file logger for the specified logger name.
+
+    Parameters:
+    - logger_name (str): The name of the logger.
+
+    Returns:
+    - logging.Logger: The configured logger instance.
+    """
 	#pylint: disable=redefined-outer-name
 	logger = logging.getLogger(logger_name)
 	handler = logging.handlers.RotatingFileHandler(
@@ -33,28 +42,44 @@ def setup_logger(logger_name):
 
 logger = setup_logger("core")
 
-# Check if the command sent comes from a user in the same voice channel(for most music commands)
 def is_connected_to_same_voice():
+	"""
+    Check if the command invoker is connected to the same voice channel.
+
+    Returns:
+    - A check function that raises `commands.CheckFailure`
+    """
 	async def predicate(ctx):
 		if not ctx.author.voice:
-			# User is not connected to a voice channel
 			raise commands.CheckFailure("You need to be in a voice channel to use this command")
 		elif not ctx.voice_client or ctx.author.voice.channel != ctx.voice_client.channel:
-			# User is connected to a different voice channel than the bot
 			raise commands.CheckFailure("You need to be in the same voice channel as Dollar to use this command")
 		return True
 	return commands.check(predicate)
 
-# Check if the command is coming from a user in a voice channel(for !join and !leave)
 def is_connected_to_voice():
+	"""
+    Check if the command invoker is connected to a voice channel.
+
+    Returns:
+    - A check function that raises `commands.CheckFailure`
+    """
 	async def predicate(ctx):
 		if not ctx.author.voice:
-			# User is not connected to a voice channel
 			raise commands.CheckFailure("You need to be in a voice channel to use this command")
 		return True
 	return commands.check(predicate)
 
 def connect_to_database():
+	"""
+    Validate the connection to a MySQL database by executing a simple query.
+
+    Parameters:
+    - mydb (mysql.connector.MySQLConnection): The MySQL database connection object.
+
+    Returns:
+    - bool: True if the connection is valid, False otherwise.
+    """
 	try:
 		connection_pool = pooling.MySQLConnectionPool(
 			pool_name="mydb_pool",
@@ -85,6 +110,15 @@ async def validate_connection(mydb):
 		return False
 
 async def send_patch_notes(client):
+	"""
+    Send the latest patch notes to the system channel of each guild the bot is a member of.
+
+    Parameters:
+    - client (discord.Client): The Discord client instance representing the bot.
+
+    Returns:
+    - None
+    """
 	for guild in client.guilds:
 		logger.debug(f"Dollar loaded in {guild.name}, owner: {guild.owner}")
 		channel = guild.system_channel
@@ -115,6 +149,20 @@ async def send_patch_notes(client):
 				logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
 
 async def idle_checker(vc, comchannel, guild):
+	"""
+    Check for inactivity in the voice channel and disconnect the bot if idle for 10 minutes.
+
+    Parameters:
+    - vc: discord.VoiceClient
+        The voice client representing the bot's connection to a voice channel.
+    - comchannel: discord.TextChannel
+        The text channel where the bot commands are typically sent.
+    - guild: discord.Guild
+        The guild (server) associated with the voice channel.
+
+    Returns:
+    - None
+    """
 	time = 0
 	while True:
 		await asyncio.sleep(1)
@@ -128,5 +176,53 @@ async def idle_checker(vc, comchannel, guild):
 			await vc.disconnect()
 			await comchannel.purge(limit=500)
 			logger.debug("Finished clearing #commands channel")
+			msg = f"10 minutes reached, Dollar disconnecting from {str(guild)}"
+			await send_embed("Inactivity", "dollar4.png", msg, comchannel)
 		if not vc.is_connected():
 			break
+
+async def send_embed(title, image, msg, channel, footer=False):
+	"""
+    Send an embedded message with a title, image, and description to a specified channel.
+
+    Parameters:
+    - title (str): The title of the embed.
+    - image (str): The filename of the image to be attached.
+    - msg (str): The description or content of the embed.
+    - channel (discord.TextChannel): The channel where the embed will be sent.
+	- footer (bool): Flag to include a footer on embed.
+
+    Returns:
+    - None
+    """
+	embed = discord.Embed(title=title, description=msg, colour=0x2ecc71)
+	embed.set_author(name="Dollar")
+	file_path = os.path.join("images", image)
+	img = discord.File(file_path, filename=image)
+	embed.set_thumbnail(url=f"attachment://{image}")
+	if footer:
+		embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+	await channel.send(embed=embed, file=img)
+
+async def send_embed_error(title, msg, channel, footer=False):
+	"""
+    Send an embedded error message with a title and description to a specified channel.
+
+    Parameters:
+    - title (str): The title of the error embed.
+    - msg (str): The description or content of the error embed.
+    - channel (discord.TextChannel): The channel where the error embed will be sent.
+	- footer (bool): Flag to include a footer on embed.
+
+    Returns:
+    - None
+    """
+	image = "error.png"
+	embed = discord.Embed(title=title, description=msg, colour=0xe74c3c)
+	embed.set_author(name="Dollar")
+	file_path = os.path.join("images", image)
+	img = discord.File(file_path, filename=image)
+	embed.set_thumbnail(url=f"attachment://{image}")
+	if footer:
+		embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+	await channel.send(embed=embed, file=img)
