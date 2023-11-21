@@ -20,6 +20,7 @@ import psutil
 import threading
 import traceback
 import sys
+import signal
 import spotipy
 import requests
 import json

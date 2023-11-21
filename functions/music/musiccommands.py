@@ -6,7 +6,8 @@ from ..common.libraries import(
 	discord, commands, genius, wavelink, os, read_csv, random, asyncio, sp, artist
 )
 from ..common.generalfunctions import(
-	setup_logger, is_connected_to_same_voice, is_connected_to_voice, CustomPlayer
+	setup_logger, is_connected_to_same_voice, is_connected_to_voice, CustomPlayer,
+	send_embed, send_embed_error
 )
 
 logger = setup_logger("music")
@@ -53,7 +54,7 @@ class Music(commands.Cog):
 			await vc.disconnect()
 			await ctx.channel.purge(limit=500)
 		else:
-			await ctx.send("The bot is not connected to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Play a song, ex: !play starboy the weeknd
 	@commands.command(aliases=["Play"])
@@ -131,11 +132,13 @@ class Music(commands.Cog):
 				await ctx.send(embed=embed)
 				logger.info(f"Playskipping to: {search.title}")
 			elif vc.is_paused():
-				await ctx.send("The bot is currently paused, to playskip, first resume music with !resume")
+				msg = "The bot is currently paused, to playskip, first resume music with !resume"
+				await send_embed_error("Dollar is Paused", msg, ctx)
 			else:
-				await ctx.send("The bot is not currently playing anything.")
+				msg = "Nothing is currently playing."
+				await send_embed_error("No Song Playing", msg, ctx)
 		else:
-			await ctx.send("The bot is not connected to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Skip current song, ex: !skip
 	@commands.command(aliases=["Skip"])
@@ -144,19 +147,21 @@ class Music(commands.Cog):
 		vc = ctx.voice_client
 		if vc:
 			if not vc.is_playing():
-				return await ctx.send("There are no songs currently playing")
+				msg = "Nothing is currently playing."
+				return await send_embed_error("No Song Playing", msg, ctx)
 			if vc.queue.is_empty:
 				return await vc.stop()
 
 			await vc.seek(vc.track.length * 1000)
 			search = vc.queue.get()
 			vc.queue.put_at_front(item=search)
-			await ctx.send(f"Skipping to next song: {search}")
+			msg = f"Skipping to next song: {search}"
+			await send_embed("Skipping Song", "dollarMusic.png", msg, ctx)
 			logger.info("Skipping music")
 			if vc.is_paused():
 				await vc.resume()
 		else:
-			await ctx.send("The bot is not connected to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Pause current song, ex: !pause
 	@commands.command(aliases=["Pause"])
@@ -166,12 +171,14 @@ class Music(commands.Cog):
 		if vc:
 			if vc.is_playing() and not vc.is_paused():
 				await vc.pause()
-				await ctx.send("Paused!")
+				msg = "Pausing Music Player!"
+				await send_embed("Pausing...", "dollarMusic.png", msg, ctx)
 				logger.info("Pausing music")
 			else:
-				await ctx.send("Nothing is currently playing")
+				msg = "Nothing is currently playing"
+				await send_embed_error("No Song Playing", msg, ctx)
 		else:
-			await ctx.send("The bot is not connect to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Resume current song, ex: !resume
 	@commands.command(aliases=["Resume"])
@@ -181,12 +188,14 @@ class Music(commands.Cog):
 		if vc:
 			if vc.is_paused():
 				await vc.resume()
-				await ctx.send("Resuming!")
+				msg = "Resuming Music Player!"
+				await send_embed("Resuming...", "dollarMusic.png", msg, ctx)
 				logger.info("Resuming music")
 			else:
-				await ctx.send("Nothing is currently paused.")
+				msg = "Nothing is currently playing"
+				await send_embed_error("No Song Playing", msg, ctx)
 		else:
-			await ctx.send("The bot is not connected to a voice channel")
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Show current playing song, ex: !nowplaying
 	@commands.command(aliases=["Nowplaying", "NowPlaying", "np"])
@@ -205,7 +214,8 @@ class Music(commands.Cog):
 					except TimeoutError:
 						logger.warning("GET request timed out, retrying...")
 				if song is None:
-					await ctx.send("Unable to find current playing song on Genius, please try again...")
+					msg = "Unable to find current playing song on Genius, please try again..."
+					await send_embed_error("Error Finding Song", msg, ctx)
 				else:
 					embed = discord.Embed(title=song.title, url=song.url, description=f"Currently playing {song.full_title}", colour=discord.Colour.random())
 					embed.set_author(name=f"{song.artist}")
@@ -214,7 +224,8 @@ class Music(commands.Cog):
 					logger.info("Current song information loaded from Genius API")
 					await ctx.send(embed=embed)
 		else:
-			await ctx.send("There are no songs currently play, you can queue one by using !play or !playsc")
+			msg = "There are no songs currently playing, you can queue one by using !play or !playsc"
+			raise commands.CheckFailure(msg)
 
 	# Show whats next in the queue
 	@commands.command(aliases=["Next", "nextsong"])
@@ -225,12 +236,14 @@ class Music(commands.Cog):
 			try:
 				search = vc.queue.get()
 				vc.queue.put_at_front(item=search)
-				await ctx.send(f"The next song is: {search}")
+				msg = f"The next song is: {search}"
+				await send_embed("Next Song...", "dollarMusic.png", msg, ctx)
 				logger.info("Printing next song in queue")
 			except:
-				await ctx.send("The queue is empty, add a song by using !play or !playsc")
+				msg = "The queue is currently empty, add a song by using !play or !playsc"
+				await send_embed_error("Empty Queue", msg, ctx)
 		else:
-			await ctx.send("The bot is not connected to a voice channel")
+			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
 	# Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
 	@commands.command(aliases=["Seek"])
@@ -241,12 +254,14 @@ class Music(commands.Cog):
 		if vc:
 			if vc.is_playing() and not vc.is_paused():
 				await vc.seek(vc.track.length * val)
-				await ctx.send(f"Seeking {val} seconds.")
+				msg = f"Seeking {val} seconds."
+				await send_embed("Seeking...", "dollarMusic.png", msg, ctx)
 				logger.info(f"Song seeked for {val} seconds")
 			else:
-				await ctx.send("Nothing is currently playing")
+				msg = "Nothing is currently playing"
+				await send_embed_error("No Song Playing", msg, ctx)
 		else:
-			await ctx.send("The bot is not connected to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
 	# Set volume of bot, ex !volume 1(sets volume of bot to 1)
 	@commands.command(aliases=["Volume"])
@@ -256,10 +271,11 @@ class Music(commands.Cog):
 		val = int(volume)
 		if vc and (0 < val <= 100):
 			await vc.set_volume(val)
-			await ctx.send(f"Volume set to: {val}")
+			msg = f"Volume set to: {val}"
+			await send_embed("Setting Volume...", "dollarMusic.png", msg, ctx)
 			logger.info(f"Bot volume set to: {val}")
 		else:
-			await ctx.send("The bot is not connected to a voice channel.")
+			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
 	# Prints all items in queue, ex !queue
 	@commands.command(aliases=["Queue"])
@@ -282,7 +298,8 @@ class Music(commands.Cog):
 			await ctx.send(embed=embed, file=img)
 		else:
 			logger.info("Queue is already empty")
-			await ctx.send("The queue is currently empty, add a song by using !play or !playsc")
+			msg = "The queue is currently empty, add a song by using !play or !playsc"
+			await send_embed_error("Empty Queue", msg, ctx)
 
 	# Clears queue, !empty
 	@commands.command(aliases=["Empty", "clearqueue", "restart"])
@@ -292,10 +309,12 @@ class Music(commands.Cog):
 		if vc.queue.is_empty is False:
 			vc.queue.clear()
 			logger.info("Emptying queue")
-			await ctx.send("All items from queue have been removed")
+			msg = "All items from queue have been removed"
+			await send_embed("Queue Cleared", "dollarMusic.png", msg, ctx)
 		else:
 			logger.info("Queue is already empty")
-			await ctx.send("The queue is currently empty, add a song by using !play or !playsc")
+			msg = "The queue is currently empty, add a song by using !play or !playsc"
+			await send_embed_error("Empty Queue", msg, ctx)
 
 	# Load playlist from CSV, ex !load
 	@commands.command(aliases=["Load"])
@@ -336,8 +355,8 @@ class Music(commands.Cog):
 			await Music.queue(self, ctx)
 			logger.info(f"Finished loading {count} songs into queue from playlist")
 		else:
-			await ctx.send("Please upload an Exportify Playlist to this channel and then use !load")
 			logger.warning("ex.csv does not exist!")
+			raise commands.CheckFailure("Please upload an Exportify Playlist to this channel and then use !load")
 
 	@commands.command(aliases=["generatePlaylist", "GeneratePlaylist", "genplay", "genPlay"])
 	@is_connected_to_same_voice()
@@ -367,7 +386,8 @@ class Music(commands.Cog):
 			tracks.append(f"{track['name']} {track['artists'][0]['name']}")
 
 		if not tracks:
-			await ctx.send("Those filters returned zero tracks, try again.")
+			msg = "Those filters returned zero tracks, try again."
+			await send_embed_error("Zero Tracks Returned", msg, ctx)
 			logger.warning(f"{query} returned zero results")
 		else:
 			while tracks:
@@ -409,7 +429,8 @@ class Music(commands.Cog):
 					await ctx.send("Unable to find song lyrics, songs from playlists are less likely to return lyrics...")
 				else:
 					if len(song.lyrics) > 4096:
-						return await ctx.send(f"Lyrics can be found here: <{song.url}>")
+						msg = f"Lyrics can be found here: <{song.url}>"
+						return await send_embed("Lyrics", "dollarMusic.png", msg, ctx)
 					embed = discord.Embed(title=song.title, url=song.url,
 										description=song.lyrics, colour=discord.Colour.random())
 					embed.set_author(name=f"{song.artist}")
@@ -418,15 +439,16 @@ class Music(commands.Cog):
 					logger.info("Lyrics loaded from Genius API")
 					await ctx.send(embed=embed)
 		else:
-			await ctx.send("Nothing is currently playing, add a song by using !play or !playsc")
+			msg = "Nothing is currently playing, add a song by using !play or !playsc"
+			await send_embed_error("No Song Playing", msg, ctx)
 
 	@play.error
 	async def play_error(self, ctx, error):
 		if isinstance(error, commands.BadArgument):
-			await ctx.send("Bad Argument please create a /ticket.")
+			await send_embed_error("Bad Argument", error, ctx)
 			logger.error(f"Bad argument {error}")
 		elif isinstance(error, commands.MissingRequiredArgument):
-			await ctx.send("Missing required argument for this command.")
+			await send_embed_error("Missing Required Argument", error, ctx)
 			logger.error("User did not provide a song when using !play")
 
 async def setup(bot):
