@@ -2,27 +2,20 @@
 DESCRIPTION: Main class that creates UnfilteredBot
 All client events should be written here.
 """
-from functions.common.libraries import(
-	discord, os, wavelink, logging, pandas, threading,
-	asyncio, commands, tasks, load_dotenv, created_channels
-)
-from functions.common.generalfunctions import(
-	setup_logger, send_patch_notes, connect_to_database,
-	validate_connection, idle_checker, send_embed, send_embed_error
-)
+import functions.common.libraries as lib
+from functions.common.generalfunctions import GeneralFunctions
+from functions.queries.queries import Queries
+from functions.notifications.push_notifications import PushNotifications
 
-# load environment
-load_dotenv()
+lib.load_dotenv()
 
-# Get all commands from Cogs
 exts: list = [
 		"functions.diagnostic.debugging", "functions.game.gamecommands", 
-		"functions.music.musiccommands", "functions.admin.admin", 
-		"functions.watchlist.myWatchList"
+		"functions.music.musiccommands", "functions.admin.admin",
+		"functions.queries.queries", "functions.diagnostic.settings"
 	]
 
-# Create Unfiltered Bot to accept commands from other bots
-class UnfilteredBot(commands.Bot):
+class UnfilteredBot(lib.commands.Bot):
 	"""
 	DESCRIPTION: Creates UnfilteredBot, loads exts, connects to db
 	PARAMETERS: commands.Bot - Discord Commands
@@ -31,11 +24,12 @@ class UnfilteredBot(commands.Bot):
 		ctx = await self.get_context(message)
 		await self.invoke(ctx)
 
-	# Connect to MySQL database
-	mydb = connect_to_database()
+	mydb = GeneralFunctions.connect_to_database()
 
-	# Send patch notes, load cogs, and sync app commands
 	async def setup_hook(self):
+		"""
+		DESCRIPTION: Send patch notes, load cogs, and sync app commands
+		"""
 		for cog in exts:
 			try:
 				logger.debug(f"Loading ext {cog}")
@@ -56,24 +50,27 @@ class UnfilteredBot(commands.Bot):
 		await super().close()
 		await self.session.close()
 
-client = UnfilteredBot(command_prefix="!", intents=discord.Intents.all(), help_command=None)
+client = UnfilteredBot(command_prefix="!", intents=lib.discord.Intents.all(), help_command=None)
 
-# Setup Logging
-logger = setup_logger("dollar")
-logging.getLogger("discord.gateway").setLevel(logging.WARNING)
+logger = GeneralFunctions.setup_logger("dollar")
 
-# Get Discord, GitHub tokens from ENV
-DISCORD_TOKEN = os.getenv("TOKEN")
+DISCORD_TOKEN = lib.os.getenv("TOKEN")
 
 @client.event
 async def on_ready():
+	"""
+	DESCRIPTION: On Ready Event
+	"""
 	client.loop.create_task(connect_nodes())
 	validate_db.start()
-	await send_patch_notes(client)
+	await GeneralFunctions.send_patch_notes(client)
 
 async def connect_nodes():
+	"""
+	DESCRIPTION: Connect to Wavelink Node
+	"""
 	await client.wait_until_ready()
-	await wavelink.NodePool.create_node(
+	await lib.wavelink.NodePool.create_node(
 		bot=client,
 		host="127.0.0.1",
 		port=2333,
@@ -82,27 +79,40 @@ async def connect_nodes():
 
 #------------------------------------------------------------------------------------------------
 # Client Events
-
-# Connected to Wavelink Node
+#------------------------------------------------------------------------------------------------
 @client.event
-async def on_wavelink_node_ready(node: wavelink.Node):
+async def on_wavelink_node_ready(node: lib.wavelink.Node):
+	"""
+	DESCRIPTION: Connected to Wavelink Node
+	PARAMETERS: node - Wavelink Node
+	"""
 	logger.info(f"Node: <{node.identifier}> is ready")
 	logger.info(f"Logged in as {node.bot.user} ({node.bot.user.id})")
-	await client.change_presence(activity=discord.Game(name=" Music! | !help"))
+	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
 
-# Event was created
 @client.event
 async def on_scheduled_event_create(event):
+	"""
+	DESCRIPTION: Event was created
+	PARAMETERS: event - Event
+	"""
 	logger.info(f"The event [{event.name}] in was created in {event.guild}")
 
-# Event was cancelled
 @client.event
 async def on_scheduled_event_delete(event):
+	"""
+	DESCRIPTION: Event was cancelled
+	PARAMETERS: event - Event
+	"""
 	logger.info(f"The event [{event.name}] in was cancelled in {event.guild}")
 
-# Event was modifed(changes made or status changed)
 @client.event
 async def on_scheduled_event_update(before, after):
+	"""
+	DESCRIPTION: Event was modified(changes made or status changed)
+	PARAMETERS: before - Event
+				after - Event
+	"""
 	start = str(before.status)
 	current = str(after.status)
 	users = after.users()
@@ -127,32 +137,146 @@ async def on_scheduled_event_update(before, after):
 		await channel.set_permissions(channel.guild.default_role, connect=True)
 		logger.info(f"Reset channel permissions and granted access to {channel} for all users")
 
-# Add interested users to connect to event channel
 @client.event
 async def on_scheduled_event_user_add(event, user):
+	"""
+	DESCRIPTION: Add user to event channel
+	PARAMETERS: event - Event
+				user - Discord User
+	"""
 	logger.info(f"{user} is interested in [{event.name}] in {event.guild}")
 
-# If user loses interest in event, remove permissions to connect to channel
 @client.event
 async def on_scheduled_event_user_remove(event, user):
+	"""
+	DESCRIPTION: Remove user from event channel
+	PARAMETERS: event - Event
+				user - Discord User
+	"""
 	logger.info(f"{user} is now uninterested in the event [{event.name}] in {event.guild}")
 
-# Scan messages to ensure message was sent in #commands chat
+@client.event
+async def on_guild_join(guild):
+	"""
+	DESCRIPTION: Create voice channel "JOIN HERE" and text channel "commands"
+	PARAMETERS: guild - Discord Guild
+	"""
+	logger.info(f"Joined {guild.name} ({guild.id})")
+	user_exists = Queries.check_if_user_exists(UnfilteredBot.mydb, str(guild.owner.name))
+	if user_exists is None:
+		Queries.add_user_to_db(UnfilteredBot.mydb, guild.owner.name)
+	Queries.add_guild_to_db(UnfilteredBot.mydb, guild.name, guild.owner.name)
+	await guild.owner.send("Thanks for adding me to your server! Please use /dollarsettings, to configure Dollar to your discord.")
+	await guild.owner.send("Additionally use /userinformation to update your user information(not required).")
+
+@client.event
+async def on_guild_remove(guild):
+	"""
+	DESCRIPTION: Delete voice channel "JOIN HERE" and text channel "commands"
+	PARAMETERS: guild - Discord Guild
+	"""
+	logger.info(f"Left {guild.name} ({guild.id})")
+	Queries.remove_guild_from_db(UnfilteredBot.mydb, guild.name)
+	Queries.remove_user_from_db(UnfilteredBot.mydb, guild.owner.name)
+	app_info = await client.application_info()
+	owner = app_info.owner
+	await owner.send(f"Left {guild.name} ({guild.id})")
+
+@client.event
+async def on_member_join(member):
+	"""
+	DESCRIPTION: Send user a message when the join a server to the system channel
+	PARAMETERS: member - Discord Member
+	"""
+	guild = member.guild
+	channel = member.guild.system_channel
+	if channel is not None:
+		try:
+			await channel.send(f"Welcome {member.mention} to {guild.name}!")
+			Queries.add_user_to_db(UnfilteredBot.mydb, str(member))
+			logger.info(f"Sent welcome message to {member} in {guild}")
+		except lib.discord.Forbidden:
+			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
+		except lib.discord.HTTPException:
+			logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
+
+@client.event
+async def on_member_remove(member):
+	"""
+	DESCRIPTION: Send user a message when the leave a server to the system channel
+	PARAMETERS: member - Discord Member
+	"""
+	guild = member.guild
+	channel = member.guild.system_channel
+	if channel is not None:
+		try:
+			await channel.send(f"{member.mention} has left {guild.name}. Bye Felicia")
+			Queries.remove_user_from_db(UnfilteredBot.mydb, str(member))
+			logger.info(f"Sent leave message to {member} in {guild}")
+		except lib.discord.Forbidden:
+			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
+		except lib.discord.HTTPException:
+			logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
+
+@client.event
+async def on_raw_reaction_add(payload):
+	"""
+	DESCRIPTION: Scan for reactions to messages
+	PARAMETERS: payload - Discord Raw Reaction
+	"""
+	logger.debug(f"Reaction added: {payload}")
+	user_name = str(payload.member)
+	reaction = payload.emoji.name
+	channel_id = payload.channel_id
+	message_id = payload.message_id
+	message = await client.get_channel(channel_id).fetch_message(message_id)
+	if message.embeds:
+			game_name = str(message.embeds[0].title)
+	#NOTE: Add subscription to game
+	if reaction == "🔔" and int(channel_id) == int(lib.PATCHES_CHANNEL):
+		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
+		game_result = Queries.check_if_game_exists(UnfilteredBot.mydb, game_name)
+		logger.info(f"Game result: {game_result}")
+		if game_result is None:
+			Queries.add_game_to_db(UnfilteredBot.mydb, game_name)
+		user_result = Queries.check_if_user_exists(UnfilteredBot.mydb, user_name)
+		logger.info(f"User result: {user_result}")
+		if user_result is None:
+			Queries.add_user_to_db(UnfilteredBot.mydb, user_name)
+		Queries.add_game_subscription(UnfilteredBot.mydb, user_name, game_name)
+		await payload.member.send(f"Subscribed to {game_name} notifications!")
+	#NOTE: Remove subscription to game
+	elif reaction == "🔕" and int(channel_id) == int(lib.PATCHES_CHANNEL):
+		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
+		game_result = Queries.check_if_game_exists(UnfilteredBot.mydb, game_name)
+		user_result = Queries.check_if_user_exists(UnfilteredBot.mydb, user_name)
+		if game_result and user_result:
+			Queries.remove_game_subscription(UnfilteredBot.mydb, user_name, game_name)
+			await payload.member.send(f"Unsubscribed from {game_name} notifications!")
+		else:
+			await payload.member.send("An error occurred while unsubscribing from notifications. Please report this bug using /reportbug")
+			logger.error(f"User {user_name} or game {game_name} does not exist in database")
+	
 @client.event
 async def on_message(message):
+	"""
+	DESCRIPTION: Scan messages to ensure message was sent in #commands chat
+	PARAMETERS: message - Discord Message
+	"""
 	msg = message.content
 	channel = str(message.channel)
 	author = message.author
 
-	if isinstance(message.channel, discord.channel.DMChannel) and message.author != client.user:
+	if isinstance(message.channel, lib.discord.channel.DMChannel) and message.author != client.user:
 		logger.info(f"{author} sent a DM to Dollar")
 		msg = '''Checkout this readme:
 		(https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md)'''
-		#pylint: disable=long-line
-		msg2 = '''If you still have questions, go to a discord I am in 
-		and use /ticket to submit a request and interact with my devs.'''
-		await send_embed("Welcome to Dollar", "dollar.png", msg, message.author)
-		await send_embed("For more questions...", "dollar.png", msg2, message.author)
+		await GeneralFunctions.send_embed("Welcome to Dollar", "dollar.png", msg, message.author)
+
+	# if channel.id == lib.PATCHES_CHANNEL:
+	# 	embed_title = message.embeds[0].title
+	# 	message_id = message.id
+	# 	PushNotifications.notify_patch_notes(embed_title, message.channel_id, message_id)
 
 	if channel.startswith("commands") or channel.startswith("test"):
 		if msg.startswith("!"):
@@ -165,10 +289,10 @@ async def on_message(message):
 			if message.attachments and message.attachments[0].filename.endswith(".csv"):
 				try:
 					await message.attachments[0].save(fp="ex.csv")
-					pandas.read_csv("ex.csv")
+					lib.pandas.read_csv("ex.csv")
 					await message.channel.send("File downloaded. Use !load to load songs into queue.")
 					logger.info(f"CSV successfully downloaded, author: {author}")
-				except pandas.errors.ParserError:
+				except lib.pandas.errors.ParserError:
 					logger.warning("File is not a valid CSV")
 					await message.channel.send("File is not a valid CSV.")
 				except Exception as e:
@@ -181,126 +305,135 @@ async def on_message(message):
 		logger.info(f"Command entered in wrong channel, deleting: {msg}")
 		await message.delete(delay=1)
 
-# Scan when users join/leave/move voice channels
 @client.event
 async def on_voice_state_update(member, before, after):
+	"""
+	DESCRIPTION: Scan when users join/leave/move voice channels
+	PARAMETERS: member - Discord Member
+				before - Discord Voice State
+				after - Discord Voice State
+	"""
 	ctxbefore = before.channel
 	ctxafter = after.channel
 	guild = client.get_guild(member.guild.id)
 	user = str(member.display_name)
-	channel = discord.utils.get(guild.channels, name="JOIN HERE💎")
-	comchannel = discord.utils.get(guild.channels, name="commands")
+	channel = lib.discord.utils.get(guild.channels, name="JOIN HERE💎")
+	comchannel = lib.discord.utils.get(guild.channels, name="commands")
 	if channel is not None:
 		category = channel.category_id
 	if str(member) == "Dollar#5869":
 		dollar = member.id
 	else:
 		dollar = 0
-
-	# Add/Remove DJ Role from users, if user joins JOIN HERE💎, 
-	# create a voice channel and move them to that channel, 
-	# remove created channel(s) when its empty
+	
+	#NOTE: If they join JOIN HERE💎, create a new channel
 	if ctxbefore is None and ctxafter is not None:
-		# Somebody joined a voice channel
+		#NOTE Somebody joined a voice channel
 		logger.info(f"{member} joined {ctxafter}")
 		if str(ctxafter) == str(channel):
 			await channel.set_permissions(guild.default_role, connect=False)
 			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
-			category_channel = discord.utils.get(guild.categories, id=category)
+			category_channel = lib.discord.utils.get(guild.categories, id=category)
 			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
 			await v_channel.set_permissions(member, manage_channels=True)
-			created_channels.append(v_channel.id)
+			lib.created_channels.append(v_channel.id)
 			logger.info(f"Successfully created {v_channel} in {str(guild)}")
 			await member.move_to(v_channel)
 			while member.voice.channel != v_channel:
-				await asyncio.sleep(1)
+				await lib.asyncio.sleep(1)
 			await channel.set_permissions(guild.default_role, connect=True)
 			logger.info(f"Unlocked {str(channel)}, channel creation finished in {str(guild)}")
 	elif ctxbefore is not None and ctxafter is None:
-		# Somebody left a voice channel
+		#NOTE: Somebody left a voice channel
 		logger.info(f"{member} left {ctxbefore}")
-		for channel_id in created_channels:
+		for channel_id in lib.created_channels:
 			if ctxbefore.id == channel_id:
-				v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
+				v_channel = lib.discord.utils.get(guild.channels, id=ctxbefore.id)
 				if len(v_channel.members) == 0:
 					await v_channel.delete()
 					logger.info(f"{v_channel} empty, deleted channel in {str(guild)}")
 					# pylint: disable=modified-iterating-list
-					created_channels.remove(ctxbefore.id)
+					lib.created_channels.remove(ctxbefore.id)
 	elif str(ctxbefore) != str(ctxafter):
-		# Somebody was already connected to a vc but moved to a different channel
+		#NOTE: Somebody was already connected to a vc but moved to a different channel
 		logger.info(f"{member} moved from {ctxbefore} to {ctxafter}")
 
-		# Prioritize removing empty channels
-		for channel_id in created_channels:
+		#NOTE: Prioritize removing empty channels
+		for channel_id in lib.created_channels:
 			if ctxbefore.id == channel_id:
-				v_channel = discord.utils.get(guild.channels, id=ctxbefore.id)
+				v_channel = lib.discord.utils.get(guild.channels, id=ctxbefore.id)
 				if len(v_channel.members) == 0:
 					await v_channel.delete()
 					logger.info(f"{v_channel} empty, deleted channel in {str(guild)}")
 					# pylint: disable=modified-iterating-list
-					created_channels.remove(ctxbefore.id)
+					lib.created_channels.remove(ctxbefore.id)
 
-		# If they move to JOIN HERE💎 go through channel creation
+		#NOTE: If they move to JOIN HERE💎 go through channel creation
 		if str(ctxafter) == str(channel):
 			await channel.set_permissions(guild.default_role, connect=False)
 			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
-			category_channel = discord.utils.get(guild.categories, id=category)
+			category_channel = lib.discord.utils.get(guild.categories, id=category)
 			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
 			await v_channel.set_permissions(member, manage_channels=True)
-			created_channels.append(v_channel.id)
+			lib.created_channels.append(v_channel.id)
 			logger.info(f"Successfully created {v_channel} in {str(guild)}")
 			await member.move_to(v_channel)
 			while member.voice.channel != v_channel:
-				await asyncio.sleep(1)
+				await lib.asyncio.sleep(1)
 			await channel.set_permissions(guild.default_role, connect=True)
 			logger.info(f"Unlocked {str(channel)}, channel creation finished in {str(guild)}")
 
-	# Inactivity Checker, create a new thread to run idle_checker
+	#NOTE: Inactivity Checker, create a new thread to run idle_checker
 	# pylint: disable=unused-variable
-	vc_lock = threading.Lock()
+	vc_lock = lib.threading.Lock()
 	# pylint: disable=unused-variable
-	comchannel_lock = threading.Lock()
+	comchannel_lock = lib.threading.Lock()
 	
 	if member.id != dollar:
 		return
 
 	elif ctxbefore is None:
 		vc = after.channel.guild.voice_client
-		asyncio.create_task(idle_checker(vc, comchannel, guild))
+		lib.asyncio.create_task(GeneralFunctions.idle_checker(vc, comchannel, guild))
 
-#------------------------------------------------------------------------------------------------
-
-# Periodically validate the connection
-@tasks.loop(seconds=60)
-async def validate_db():
-	await validate_connection(UnfilteredBot.mydb)
-
-# Error Handling
 @client.event
 async def on_command_error(ctx, error):
-	if isinstance(error, commands.MissingRole):
-		await send_embed_error("Missing Required Role", error, ctx)
+	"""
+	DESCRIPTION: Error Handling
+	PARAMETERS: ctx - Discord Context
+				error - Error
+	"""
+	if isinstance(error, lib.commands.MissingRole):
+		await GeneralFunctions.send_embed_error("Missing Required Role", error, ctx)
 		logger.error("User has insufficient role")
-	elif isinstance(error, commands.CommandNotFound):
-		await send_embed_error("Command Not Found", error, ctx)
+	elif isinstance(error, lib.commands.CommandNotFound):
+		await GeneralFunctions.send_embed_error("Command Not Found", error, ctx)
 		logger.error("User tried to use a command that does not exist")
-	elif isinstance(error, commands.BadArgument):
-		await send_embed_error("Invalid argument", error, ctx)
+	elif isinstance(error, lib.commands.BadArgument):
+		await GeneralFunctions.send_embed_error("Invalid argument", error, ctx)
 		logger.error("User provided an invalid argument")
-	elif isinstance(error, commands.CheckFailure):
-		await send_embed_error("Incorrect Command Usage", error, ctx)
+	elif isinstance(error, lib.commands.CheckFailure):
+		await GeneralFunctions.send_embed_error("Incorrect Command Usage", error, ctx)
 		logger.error("User used command incorrectly")
-	elif isinstance(error, discord.errors.PrivilegedIntentsRequired):
-		await send_embed_error("Missing Required Intent", error, ctx)
+	elif isinstance(error, lib.discord.errors.PrivilegedIntentsRequired):
+		await GeneralFunctions.send_embed_error("Missing Required Intent", error, ctx)
 		logger.error("Bot is missing required intent")
-	elif isinstance(error, commands.CommandOnCooldown):
-		await send_embed_error("Command Cooldown", error, ctx)
+	elif isinstance(error, lib.commands.CommandOnCooldown):
+		await GeneralFunctions.send_embed_error("Command Cooldown", error, ctx)
 		logger.warning(f"Command on cooldown for user {ctx.author}")
 	else:
 		msg = "An unexpected error occurred while processing your command. Please use /ticket."
-		await send_embed_error("Unexpected Error", msg, ctx)
+		await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)
 		logger.exception("Unexpected error occurred", exc_info=error)
 
-# Run bot
+#------------------------------------------------------------------------------------------------
+# Tasks
+#------------------------------------------------------------------------------------------------
+@lib.tasks.loop(seconds=60)
+async def validate_db():
+	"""
+	DESCRIPTION: Periodically validate the connection
+	"""
+	await GeneralFunctions.validate_connection(UnfilteredBot.mydb)
+
 client.run(DISCORD_TOKEN)
