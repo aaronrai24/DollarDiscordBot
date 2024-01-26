@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS cash.users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
+    discord_id VARCHAR(255),
     username VARCHAR(255),
     home_address VARCHAR(255),
     work_address VARCHAR(255)

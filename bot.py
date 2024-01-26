@@ -12,7 +12,8 @@ lib.load_dotenv()
 exts: list = [
 		"functions.diagnostic.debugging", "functions.game.gamecommands", 
 		"functions.music.musiccommands", "functions.admin.admin",
-		"functions.queries.queries", "functions.diagnostic.settings"
+		"functions.queries.queries", "functions.diagnostic.settings",
+		"functions.notifications.push_notifications"
 	]
 
 class UnfilteredBot(lib.commands.Bot):
@@ -55,6 +56,10 @@ client = UnfilteredBot(command_prefix="!", intents=lib.discord.Intents.all(), he
 logger = GeneralFunctions.setup_logger("dollar")
 
 DISCORD_TOKEN = lib.os.getenv("TOKEN")
+
+#NOTE: Declarations
+push_notifications = PushNotifications(UnfilteredBot)
+queries = Queries(UnfilteredBot)
 
 @client.event
 async def on_ready():
@@ -162,10 +167,10 @@ async def on_guild_join(guild):
 	PARAMETERS: guild - Discord Guild
 	"""
 	logger.info(f"Joined {guild.name} ({guild.id})")
-	user_exists = Queries.check_if_user_exists(UnfilteredBot.mydb, str(guild.owner.name))
+	user_exists = queries.check_if_user_exists(str(guild.owner.name))
 	if user_exists is None:
-		Queries.add_user_to_db(UnfilteredBot.mydb, guild.owner.name)
-	Queries.add_guild_to_db(UnfilteredBot.mydb, guild.name, guild.owner.name)
+		queries.add_user_to_db(guild.owner.id, guild.owner.name)
+	queries.add_guild_to_db(guild.name, guild.owner.name)
 	await guild.owner.send("Thanks for adding me to your server! Please use /dollarsettings, to configure Dollar to your discord.")
 	await guild.owner.send("Additionally use /userinformation to update your user information(not required).")
 
@@ -176,8 +181,8 @@ async def on_guild_remove(guild):
 	PARAMETERS: guild - Discord Guild
 	"""
 	logger.info(f"Left {guild.name} ({guild.id})")
-	Queries.remove_guild_from_db(UnfilteredBot.mydb, guild.name)
-	Queries.remove_user_from_db(UnfilteredBot.mydb, guild.owner.name)
+	queries.remove_guild_from_db(guild.name)
+	queries.remove_user_from_db(guild.owner.name)
 	app_info = await client.application_info()
 	owner = app_info.owner
 	await owner.send(f"Left {guild.name} ({guild.id})")
@@ -190,10 +195,11 @@ async def on_member_join(member):
 	"""
 	guild = member.guild
 	channel = member.guild.system_channel
+	user_id = member.id
 	if channel is not None:
 		try:
 			await channel.send(f"Welcome {member.mention} to {guild.name}!")
-			Queries.add_user_to_db(UnfilteredBot.mydb, str(member))
+			queries.add_user_to_db(user_id, str(member))
 			logger.info(f"Sent welcome message to {member} in {guild}")
 		except lib.discord.Forbidden:
 			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
@@ -211,7 +217,7 @@ async def on_member_remove(member):
 	if channel is not None:
 		try:
 			await channel.send(f"{member.mention} has left {guild.name}. Bye Felicia")
-			Queries.remove_user_from_db(UnfilteredBot.mydb, str(member))
+			queries.remove_user_from_db(str(member))
 			logger.info(f"Sent leave message to {member} in {guild}")
 		except lib.discord.Forbidden:
 			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
@@ -226,32 +232,33 @@ async def on_raw_reaction_add(payload):
 	"""
 	logger.debug(f"Reaction added: {payload}")
 	user_name = str(payload.member)
+	user_id = payload.user_id
 	reaction = payload.emoji.name
 	channel_id = payload.channel_id
 	message_id = payload.message_id
 	message = await client.get_channel(channel_id).fetch_message(message_id)
 	if message.embeds:
-			game_name = str(message.embeds[0].title)
+		game_name = str(message.embeds[0].title)
 	#NOTE: Add subscription to game
 	if reaction == "🔔" and int(channel_id) == int(lib.PATCHES_CHANNEL):
 		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
-		game_result = Queries.check_if_game_exists(UnfilteredBot.mydb, game_name)
+		game_result = queries.check_if_game_exists(game_name)
 		logger.info(f"Game result: {game_result}")
 		if game_result is None:
-			Queries.add_game_to_db(UnfilteredBot.mydb, game_name)
-		user_result = Queries.check_if_user_exists(UnfilteredBot.mydb, user_name)
+			queries.add_game_to_db(game_name)
+		user_result = queries.check_if_user_exists(user_name)
 		logger.info(f"User result: {user_result}")
 		if user_result is None:
-			Queries.add_user_to_db(UnfilteredBot.mydb, user_name)
-		Queries.add_game_subscription(UnfilteredBot.mydb, user_name, game_name)
+			queries.add_user_to_db(user_id, user_name)
+		queries.add_game_subscription(user_name, game_name)
 		await payload.member.send(f"Subscribed to {game_name} notifications!")
 	#NOTE: Remove subscription to game
 	elif reaction == "🔕" and int(channel_id) == int(lib.PATCHES_CHANNEL):
 		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
-		game_result = Queries.check_if_game_exists(UnfilteredBot.mydb, game_name)
-		user_result = Queries.check_if_user_exists(UnfilteredBot.mydb, user_name)
+		game_result = queries.check_if_game_exists(game_name)
+		user_result = queries.check_if_user_exists(user_name)
 		if game_result and user_result:
-			Queries.remove_game_subscription(UnfilteredBot.mydb, user_name, game_name)
+			queries.remove_game_subscription(user_name, game_name)
 			await payload.member.send(f"Unsubscribed from {game_name} notifications!")
 		else:
 			await payload.member.send("An error occurred while unsubscribing from notifications. Please report this bug using /reportbug")
@@ -273,10 +280,13 @@ async def on_message(message):
 		(https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md)'''
 		await GeneralFunctions.send_embed("Welcome to Dollar", "dollar.png", msg, message.author)
 
-	# if channel.id == lib.PATCHES_CHANNEL:
-	# 	embed_title = message.embeds[0].title
-	# 	message_id = message.id
-	# 	PushNotifications.notify_patch_notes(embed_title, message.channel_id, message_id)
+	if str(message.channel.id) == str(lib.PATCHES_CHANNEL):
+		try:
+			embed_title = message.embeds[0].title
+			logger.info(f"Game update detected: {embed_title}, channel id: {message.channel.id}, message id: {message.id}")
+			await push_notifications.notify_game_update(embed_title, message)
+		except IndexError:
+			pass
 
 	if channel.startswith("commands") or channel.startswith("test"):
 		if msg.startswith("!"):

@@ -5,7 +5,7 @@ import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 from functions.queries.queries import Queries
 
-logger = GeneralFunctions.setup_logger("mysql-queries")
+logger = GeneralFunctions.setup_logger("mysql.queries")
 
 class PushNotifications(lib.commands.Cog):
 	"""
@@ -17,7 +17,7 @@ class PushNotifications(lib.commands.Cog):
 		self.bot = bot
 		self.mydb = bot.mydb
 
-	async def notify_game_update(self, game_name, channel_id, message_id):
+	async def notify_game_update(self, game_name, message):
 		"""
 		DESCRIPTION: Notifies users of game updates
 		PARAMETERS: game_name (str) - Game name
@@ -28,14 +28,11 @@ class PushNotifications(lib.commands.Cog):
 		users = Queries.get_game_subscriptions(self.mydb, game_name)
 		logger.debug(f"Users: {users} that are subscribed to {game_name}")
 
-		channel = self.bot.get_channel(channel_id)
-		message = await channel.fetch_message(message_id)
-
-		thread = await message.start_thread(name=f"{game_name} Update Subscriptions")
-		
+		thread = await message.create_thread(name=f"{game_name} Update Subscriptions")
+		logger.info(f"users: {users}")
 		for user in users:
-			logger.debug(f"Sending patch note notification for user: {user}")
-			await thread.send(f"{user.mention}, {game_name} has had a new update, check it out!")
+			logger.info(f"Sending patch note notification for user: {user}")
+			await thread.send(f"<@{user}>, {game_name} has had a new update, check it out!")
 
 
 async def setup(bot):
