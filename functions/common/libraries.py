@@ -31,6 +31,7 @@ from lyricsgenius import Genius
 from spotipy.oauth2 import SpotifyClientCredentials
 from collections import defaultdict
 from mysql.connector import pooling
+from functools import wraps
 
 load_dotenv()
 

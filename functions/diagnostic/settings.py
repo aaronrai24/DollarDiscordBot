@@ -16,6 +16,10 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 	DESCRIPTION: Creates Settings Modal
 	PARAMETERS: discord.ui.Modal - Discord Modal
 	"""
+	def __init__(self, mydb):
+		super().__init__()
+		self.mydb = mydb
+
 	text_channel = lib.discord.ui.TextInput(label="Text Channel", placeholder="Enter Preferred Text Channel Name", required=True)
 	voice_channel = lib.discord.ui.TextInput(label="Voice Channel", placeholder="Enter Preferred Voice Channel Name", required=True)
 	shows_channel = lib.discord.ui.TextInput(label="Shows Channel", placeholder="Enter Preferred Shows Channel Name", required=True)
@@ -25,15 +29,47 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		DESCRIPTION: Fires on submit of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
+		guild_id = interaction.guild_id
+		guild = interaction.guild
+		guild_owner = guild.owner
+		text_channel_value = self.text_channel.value
+		voice_channel_value = self.voice_channel.value
+		shows_channel_value = self.shows_channel.value
+		logger.debug(f"Guild ID: {guild_id}, Text Channel: {text_channel_value}, Voice Channel: {voice_channel_value}, Shows Channel: {shows_channel_value}")
+		result = Queries.check_if_guild_exists(self, guild)
+		if result:
+			logger.debug(f"Guild {guild_id} exists in database, updating text, voice, and shows channels")
+			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
+		else:
+			logger.debug(f"Guild {guild_id} does not exist in database, adding text, voice, and shows channels")
+			Queries.add_guild_to_db(self, str(guild), str(guild_owner))
+			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
+
+		logger.info(f"Settings saved for guild {guild_id}")
 		await interaction.response.send_message("Settings Saved! Creating your channels", ephemeral=True)
+
+		logger.debug(f"Creating Text, voice, and shows channels for guild {guild}")
+		await guild.create_text_channel(text_channel_value)
+		await guild.create_voice_channel(voice_channel_value)
+		await guild.create_voice_channel(shows_channel_value)
+		logger.debug(f"Text, voice, and shows channels created for guild {guild}")
 
 	async def on_error(self, interaction: lib.discord.Interaction, error: Exception) -> None:
 		"""
 		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		await interaction.response.send_message("Oops! Something went wrong.", ephemeral=True)
-		logger.error(error)
+		if isinstance(error, lib.discord.NotFound):
+			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
+		elif isinstance(error, lib.discord.Forbidden):
+			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
+		elif isinstance(error, lib.discord.HTTPException):
+			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
+		else:
+			message = "Oops! Something went wrong. Please report this bug using /reportbug."
+
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
 
 class UserInfoModal(lib.discord.ui.Modal, title="UserInfo"):
 	"""
@@ -70,11 +106,20 @@ class UserInfoModal(lib.discord.ui.Modal, title="UserInfo"):
 
 	async def on_error(self, interaction: lib.discord.Interaction, error: Exception) -> None:
 		"""
-		DESCRIPTION: Fires on error of UserInfo Modal
+		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		await interaction.response.send_message("Oops! Something went wrong.", ephemeral=True)
-		logger.error(error)
+		if isinstance(error, lib.discord.NotFound):
+			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
+		elif isinstance(error, lib.discord.Forbidden):
+			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
+		elif isinstance(error, lib.discord.HTTPException):
+			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
+		else:
+			message = "Oops! Something went wrong. Please report this bug using /reportbug."
+
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
 
 class Settings(lib.commands.Cog):
 	"""
@@ -94,7 +139,7 @@ class Settings(lib.commands.Cog):
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
 		logger.info(f"Creating Settings Modal for user: {interaction.user.name}")
-		await interaction.response.send_modal(SettingsModal())
+		await interaction.response.send_modal(SettingsModal(self.mydb))
 
 	@lib.discord.app_commands.command(name="updateuserinfo", description="Update user information")
 	async def userinformation(self, interaction: lib.discord.Interaction):

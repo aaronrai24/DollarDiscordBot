@@ -28,9 +28,9 @@ CREATE TABLE IF NOT EXISTS cash.guilds (
 
 CREATE TABLE IF NOT EXISTS cash.guild_preferences (
     preference_id INT AUTO_INCREMENT PRIMARY KEY,
-    guild_id INT,
+    guild_id INT UNIQUE,
     text_channel VARCHAR(255),
     voice_channel VARCHAR(255),
-    shows_channel_name VARCHAR(255),
+    shows_channel VARCHAR(255),
     FOREIGN KEY (guild_id) REFERENCES cash.guilds(guild_id)
 );

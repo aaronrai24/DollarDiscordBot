@@ -26,7 +26,12 @@ class Debugging(commands.Cog):
 		PARAMETERS: interaction - Discord interaction
 		"""
 		uptime = time.time() - START_TIME
-		uptime_formatted = time.strftime("%H:%M:%S", time.gmtime(uptime))
+		uptime_days = uptime // (24 * 3600)
+		uptime = uptime % (24 * 3600)
+		uptime_hours = uptime // 3600
+		uptime_minutes = (uptime % 3600) // 60
+		uptime_seconds = uptime % 60
+		uptime_formatted = f"{int(uptime_days)}d {int(uptime_hours)}h {int(uptime_minutes)}m {int(uptime_seconds)}s"
 		cpu_percent = psutil.cpu_percent()
 		ram_usage = psutil.virtual_memory().percent
 		response_message = f"Bot is currently online and running smoothly.\n\nUptime: {uptime_formatted}\nCPU Load: {cpu_percent}%\nRAM Usage: {ram_usage}%"
