@@ -4,8 +4,8 @@ All general functions should be written here.
 """
 
 from ..common.libraries import(
-	discord, logging, commands, wavelink, os, psycopg2,
-	asyncio, pool
+	discord, logging, commands, wavelink, os, asyncio,
+	pool
 )
 
 class CustomPlayer(wavelink.Player):

@@ -290,7 +290,7 @@ async def on_message(message):
 		except IndexError:
 			pass
 
-	if channel == guild_text_channel or channel == "test":
+	if channel in (guild_text_channel, "test"):
 		if msg.startswith("!"):
 			logger.info(f"Bot command entered. Command: {msg} | Author: {author}")
 			await client.process_commands(message)
