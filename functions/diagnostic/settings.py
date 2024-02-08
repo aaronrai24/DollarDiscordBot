@@ -6,7 +6,7 @@ import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 from functions.queries.queries import Queries
 
-logger = GeneralFunctions.setup_logger("settings")
+logger = GeneralFunctions.setup_logger("dollar.settings")
 
 async def is_owner(ctx):
 	return ctx.author.id == ctx.guild.owner_id
@@ -36,7 +36,8 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		voice_channel_value = self.voice_channel.value
 		shows_channel_value = self.shows_channel.value
 		logger.debug(f"Guild ID: {guild_id}, Text Channel: {text_channel_value}, Voice Channel: {voice_channel_value}, Shows Channel: {shows_channel_value}")
-		result = Queries.check_if_guild_exists(self, guild)
+
+		result = Queries.check_if_guild_exists(self, str(guild))
 		if result:
 			logger.debug(f"Guild {guild_id} exists in database, updating text, voice, and shows channels")
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
@@ -141,7 +142,7 @@ class Settings(lib.commands.Cog):
 		logger.info(f"Creating Settings Modal for user: {interaction.user.name}")
 		await interaction.response.send_modal(SettingsModal(self.mydb))
 
-	@lib.discord.app_commands.command(name="updateuserinfo", description="Update user information")
+	@lib.discord.app_commands.command(name="updateuserinfo", description="Update Your User Information")
 	async def userinformation(self, interaction: lib.discord.Interaction):
 		"""
 		DESCRIPTION: Creates UserInfo command

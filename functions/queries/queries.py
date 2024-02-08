@@ -3,12 +3,13 @@ DESCRIPTION: Queries for the database reside here
 """
 
 from ..common.libraries import(
-	commands, mysql, wraps
+	commands, wraps, ProgrammingError, IntegrityError, 
+	DatabaseError, Error
 )
 
 from ..common.generalfunctions import GeneralFunctions
 
-logger = GeneralFunctions.setup_logger("mysql-queries")
+logger = GeneralFunctions.setup_logger("postgres.queries")
 
 class Queries(commands.Cog):
 	"""
@@ -29,13 +30,13 @@ class Queries(commands.Cog):
 		def wrapper(*args, **kwargs):
 			try:
 				return func(*args, **kwargs)
-			except mysql.connector.ProgrammingError as err:
+			except ProgrammingError as err:
 				logger.error(f"Programming error: {err}")
-			except mysql.connector.IntegrityError as err:
+			except IntegrityError as err:
 				logger.error(f"Integrity error: {err}")
-			except mysql.connector.DatabaseError as err:
+			except DatabaseError as err:
 				logger.error(f"Database error: {err}")
-			except mysql.connector.Error as err:
+			except Error as err:
 				logger.error(f"General error: {err}")
 		return wrapper
 
@@ -52,8 +53,8 @@ class Queries(commands.Cog):
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to add user")
 		cursor.execute(
-			f"INSERT INTO users (discord_id, username, home_address, work_address) "
-			f"VALUES ('{user_id}', '{user_name}', '{home_address}', '{work_address}')"
+			"INSERT INTO users (discord_id, username, home_address, work_address) VALUES (%s, %s, %s, %s)",
+			(user_id, user_name, home_address, work_address)
 		)
 		self.mydb.commit()
 		logger.debug("Query to add user executed")
@@ -68,7 +69,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to check if user exists")
-		cursor.execute(f"SELECT username FROM users WHERE username = '{user_name}'")
+		cursor.execute("SELECT username FROM users WHERE username = %s", (user_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to check if user exists executed")
 		return result
@@ -83,7 +84,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Inserting game into database")
-		cursor.execute(f"INSERT INTO games (game_name) VALUES ('{game_name}')")
+		cursor.execute("INSERT INTO games (game_name) VALUES (%s)", (game_name,))
 		self.mydb.commit()
 		logger.debug("Game inserted into database")
 	
@@ -97,7 +98,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to check if game exists")
-		cursor.execute(f"SELECT game_name FROM games WHERE game_name = '{game_name}'")
+		cursor.execute("SELECT game_name FROM games WHERE game_name = %s", (game_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to check if game exists executed")
 		return result
@@ -176,7 +177,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to update users home address")
-		cursor.execute(f"UPDATE users SET home_address = '{home_address}' WHERE username = '{user_name}'")
+		cursor.execute("UPDATE users SET home_address = %s WHERE username = %s", (home_address, user_name))
 		self.mydb.commit()
 		logger.debug("Query to update users home address executed")
 	
@@ -191,7 +192,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to update users work address")
-		cursor.execute(f"UPDATE users SET work_address = '{work_address}' WHERE username = '{user_name}'")
+		cursor.execute("UPDATE users SET work_address = %s WHERE username = %s", (work_address, user_name))
 		self.mydb.commit()
 		logger.debug("Query to update users work address executed")
 	
@@ -205,7 +206,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to get users home address")
-		cursor.execute(f"SELECT home_address FROM users WHERE username = '{user_name}'")
+		cursor.execute("SELECT home_address FROM users WHERE username = %s", (user_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to get users home address executed")
 		return result
@@ -220,7 +221,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to get users work address")
-		cursor.execute(f"SELECT work_address FROM users WHERE username = '{user_name}'")
+		cursor.execute("SELECT work_address FROM users WHERE username = %s", (user_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to get users work address executed")
 		return result
@@ -235,7 +236,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to remove user")
-		cursor.execute(f"DELETE FROM users WHERE username = '{user_name}'")
+		cursor.execute("DELETE FROM users WHERE username = %s", (user_name,))
 		self.mydb.commit()
 		logger.debug("Query to remove user executed")
 
@@ -250,7 +251,11 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to add guild")
-		query = """INSERT INTO guilds (guild_name, owner_id) VALUES (%s, (SELECT user_id FROM users WHERE username = %s))"""
+		query = """
+			INSERT INTO guilds (guild_name, owner_id) 
+			VALUES (%s, (SELECT user_id FROM users WHERE username = %s))
+			ON CONFLICT (guild_name) DO NOTHING
+		"""
 		params = (guild_name, user_name)
 		cursor.execute(query, params)
 		logger.debug("Query to add guild executed")
@@ -266,7 +271,7 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to check if guild exists")
-		cursor.execute(f"SELECT guild_name FROM guilds WHERE guild_name = '{guild_name}'")
+		cursor.execute("SELECT guild_name FROM guilds WHERE guild_name = %s", (guild_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to check if guild exists executed")
 		return result
@@ -281,11 +286,10 @@ class Queries(commands.Cog):
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to remove guild")
-		# delete from guild preferences table first
-		cursor.execute(f"DELETE FROM guild_preferences WHERE guild_id = (SELECT guild_id FROM guilds WHERE guild_name = '{guild_name}')")
+		cursor.execute("DELETE FROM guild_preferences WHERE guild_id = (SELECT guild_id FROM guilds WHERE guild_name = %s)", (guild_name,))
 		self.mydb.commit()
 		logger.debug("Query to remove guild preferences executed")
-		cursor.execute(f"DELETE FROM guilds WHERE guild_name = '{guild_name}'")
+		cursor.execute("DELETE FROM guilds WHERE guild_name = %s", (guild_name,))
 		self.mydb.commit()
 		logger.debug("Query to remove guild executed")
 	
@@ -305,7 +309,7 @@ class Queries(commands.Cog):
 		query = """
 			INSERT INTO guild_preferences (text_channel, voice_channel, shows_channel, guild_id)
 			VALUES (%s, %s, %s, (SELECT guild_id FROM guilds WHERE guild_name = %s))
-			ON DUPLICATE KEY UPDATE text_channel = %s, voice_channel = %s, shows_channel = %s
+			ON CONFLICT (guild_id) DO UPDATE SET text_channel = %s, voice_channel = %s, shows_channel = %s
 			"""
 		params = (text_channel, voice_channel, shows_channel, guild_name, text_channel, voice_channel, shows_channel)
 		cursor.execute(query, params)
@@ -325,12 +329,12 @@ class Queries(commands.Cog):
 		query = """
 			SELECT text_channel FROM guild_preferences WHERE 
 			guild_id = (SELECT guild_id FROM guilds WHERE guild_name = %s)
-			"""
+		"""
 		params = (guild_name,)
 		cursor.execute(query, params)
 		result = cursor.fetchone()
 		logger.debug("Query to get guilds preferred text channel executed")
-		return result
+		return result[0] if result else None
 	
 	@handle_exceptions
 	def get_guilds_preferred_voice_channel(self, guild_name):
@@ -345,12 +349,12 @@ class Queries(commands.Cog):
 		query = """
 			SELECT voice_channel FROM guild_preferences WHERE 
 			guild_id = (SELECT guild_id FROM guilds WHERE guild_name = %s)
-			"""
+		"""
 		params = (guild_name,)
 		cursor.execute(query, params)
 		result = cursor.fetchone()
 		logger.debug("Query to get guilds preferred voice channel executed")
-		return result
+		return result[0] if result else None
 	
 	@handle_exceptions
 	def get_guilds_preferred_shows_channel(self, guild_name):
@@ -365,12 +369,12 @@ class Queries(commands.Cog):
 		query = """
 			SELECT shows_channel FROM guild_preferences WHERE 
 			guild_id = (SELECT guild_id FROM guilds WHERE guild_name = %s)
-			"""
+		"""
 		params = (guild_name,)
 		cursor.execute(query, params)
 		result = cursor.fetchone()
 		logger.debug("Query to get guilds preferred shows channel executed")
-		return result
+		return result[0] if result else None
 
 async def setup(bot):
 	await bot.add_cog(Queries(bot))

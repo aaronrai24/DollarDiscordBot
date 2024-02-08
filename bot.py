@@ -93,7 +93,7 @@ async def on_wavelink_node_ready(node: lib.wavelink.Node):
 	"""
 	logger.info(f"Node: <{node.identifier}> is ready")
 	logger.info(f"Logged in as {node.bot.user} ({node.bot.user.id})")
-	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
+	await client.change_presence(activity=lib.discord.Game(name=" Dollar 2.0!"))
 
 @client.event
 async def on_scheduled_event_create(event):
@@ -273,6 +273,8 @@ async def on_message(message):
 	msg = message.content
 	channel = str(message.channel)
 	author = message.author
+	guild = message.guild
+	guild_text_channel = queries.get_guilds_preferred_text_channel(str(guild))
 
 	if isinstance(message.channel, lib.discord.channel.DMChannel) and message.author != client.user:
 		logger.info(f"{author} sent a DM to Dollar")
@@ -288,7 +290,7 @@ async def on_message(message):
 		except IndexError:
 			pass
 
-	if channel.startswith("commands") or channel.startswith("test"):
+	if channel == guild_text_channel or channel == "test":
 		if msg.startswith("!"):
 			logger.info(f"Bot command entered. Command: {msg} | Author: {author}")
 			await client.process_commands(message)
@@ -327,11 +329,13 @@ async def on_voice_state_update(member, before, after):
 	ctxafter = after.channel
 	guild = client.get_guild(member.guild.id)
 	user = str(member.display_name)
-	channel = lib.discord.utils.get(guild.channels, name="JOIN HERE💎")
-	comchannel = lib.discord.utils.get(guild.channels, name="commands")
+	voice_channel = queries.get_guilds_preferred_voice_channel(str(guild))
+	text_channel = queries.get_guilds_preferred_text_channel(str(guild))
+	channel = lib.discord.utils.get(guild.channels, name=voice_channel)
+	comchannel = lib.discord.utils.get(guild.channels, name=text_channel)
 	if channel is not None:
 		category = channel.category_id
-	if str(member) == "Dollar#5869":
+	if str(member) == "DollarTest#1851":
 		dollar = member.id
 	else:
 		dollar = 0

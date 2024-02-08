@@ -4,8 +4,8 @@ All general functions should be written here.
 """
 
 from ..common.libraries import(
-	discord, logging, commands, wavelink, os, mysql,
-	asyncio, pooling
+	discord, logging, commands, wavelink, os, psycopg2,
+	asyncio, pool
 )
 
 class CustomPlayer(wavelink.Player):
@@ -91,34 +91,34 @@ class GeneralFunctions():
 
 	def connect_to_database():
 		"""
-		Validate the connection to a MySQL database by executing a simple query.
+		Validate the connection to a PostgreSQL database by executing a simple query.
 
 		Returns:
 		- bool: True if the connection is valid, False otherwise.
 		"""
 		try:
-			connection_pool = pooling.MySQLConnectionPool(
-				pool_name="mydb_pool",
-				pool_size=8,
+			connection_pool = pool.SimpleConnectionPool(
+				1,
+				8,
 				host="localhost",
 				user=os.getenv("DB_USER"),
 				password=os.getenv("DB_PW"),
-				database=os.getenv("DB_SCHEMA")
+				dbname=os.getenv("DB_SCHEMA")
 			)
-			mydb = connection_pool.get_connection()
+			mydb = connection_pool.getconn()
 			logger.info("Connected to the database successfully.")
 			logger.debug("Acquired a database connection from the connection pool.")
 			return mydb
-		except mysql.connector.Error as err:
+		except Exception as err:
 			logger.error(f"Failed to connect to the database: {err}")
 			return None
 
 	async def validate_connection(mydb):
 		"""
-		Validate the connection to a MySQL database by executing a simple query.
+		Validate the connection to a PostgreSQL database by executing a simple query.
 
 		Parameters:
-		- mydb (mysql.connector.MySQLConnection): The MySQL database connection object.
+		- mydb (psycopg2.extensions.connection): The PostgreSQL database connection object.
 
 		Returns:
 		- bool: True if the connection is valid, False otherwise.
@@ -130,7 +130,7 @@ class GeneralFunctions():
 			cursor.close()
 			logger.debug("Executed validation query")
 			return True
-		except mysql.connector.Error as error:
+		except Exception as error:
 			logger.error(f"Error validating connection: {error}")
 			return False
 

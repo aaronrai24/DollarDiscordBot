@@ -5,7 +5,7 @@ import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 from functions.queries.queries import Queries
 
-logger = GeneralFunctions.setup_logger("mysql.queries")
+logger = GeneralFunctions.setup_logger("dollar.notifications")
 
 class PushNotifications(lib.commands.Cog):
 	"""

@@ -20,7 +20,7 @@ import signal
 import spotipy
 import requests
 import json
-import mysql.connector
+import psycopg2
 
 from bs4 import BeautifulSoup
 from datetime import date
@@ -30,7 +30,8 @@ from dotenv import load_dotenv
 from lyricsgenius import Genius
 from spotipy.oauth2 import SpotifyClientCredentials
 from collections import defaultdict
-from mysql.connector import pooling
+from psycopg2 import pool
+from psycopg2 import ProgrammingError, IntegrityError, DatabaseError, Error
 from functools import wraps
 
 load_dotenv()
