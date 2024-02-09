@@ -58,6 +58,7 @@ Summary of loggers:
 - music: Relates to music related commands and functions
 - game-commands: Relates to game commands
 - watchlist: Relates to watchlist commands
+- core: General logger that is used in Dollar's core functions that are used repeatedly
 - dollar: General logger that is used in Dollar's core functions that are used repeatedly
 - diagnostic: Relates to Dollar diagnostic commands that are ADMIN only. Ensures diagnostic commands are working properly
 - administrative: Relates to administrative commands
