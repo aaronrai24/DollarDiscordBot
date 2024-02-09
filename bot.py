@@ -69,6 +69,10 @@ async def on_ready():
 	client.loop.create_task(connect_nodes())
 	validate_db.start()
 	await GeneralFunctions.send_patch_notes(client)
+	for guild in client.guilds:
+		lib.guild_text_channels[str(guild)] = queries.get_guilds_preferred_text_channel(str(guild))
+		lib.guild_voice_channels[str(guild)] = queries.get_guilds_preferred_voice_channel(str(guild))
+	logger.info(f"Cached text and voice channels, text: {lib.guild_text_channels}, voice: {lib.guild_voice_channels}")
 
 async def connect_nodes():
 	"""
@@ -171,8 +175,8 @@ async def on_guild_join(guild):
 	if user_exists is None:
 		queries.add_user_to_db(guild.owner.id, guild.owner.name)
 	queries.add_guild_to_db(guild.name, guild.owner.name)
-	await guild.owner.send("Thanks for adding me to your server! Please use /dollarsettings, to configure Dollar to your discord.")
-	await guild.owner.send("Additionally use /userinformation to update your user information(not required).")
+	await guild.owner.send("Thanks for adding me to your server! Please use `/dollarsettings`, to configure Dollar to your discord.")
+	await guild.owner.send("Additionally use `/userinformation` to update your user information(not required).")
 
 @client.event
 async def on_guild_remove(guild):
@@ -180,12 +184,13 @@ async def on_guild_remove(guild):
 	DESCRIPTION: Delete voice channel "JOIN HERE" and text channel "commands"
 	PARAMETERS: guild - Discord Guild
 	"""
-	logger.info(f"Left {guild.name} ({guild.id})")
+	logger.info(f"Left guild: {guild.name} ({guild.id})")
 	queries.remove_guild_from_db(guild.name)
-	queries.remove_user_from_db(guild.owner.name)
 	app_info = await client.application_info()
 	owner = app_info.owner
-	await owner.send(f"Left {guild.name} ({guild.id})")
+	msg = f"""Damn, I got kicked from {guild.name}, was I not good enough? 😢 
+		If im missing features please alert my devs using `/featurerequest`"""
+	await owner.send(msg)
 
 @client.event
 async def on_member_join(member):
@@ -209,9 +214,12 @@ async def on_member_join(member):
 @client.event
 async def on_member_remove(member):
 	"""
-	DESCRIPTION: Send user a message when the leave a server to the system channel
+	DESCRIPTION: Send user a message when they leave a server to the system channel
 	PARAMETERS: member - Discord Member
 	"""
+	if member == client.user:
+		return
+
 	guild = member.guild
 	channel = member.guild.system_channel
 	if channel is not None:
@@ -274,7 +282,7 @@ async def on_message(message):
 	channel = str(message.channel)
 	author = message.author
 	guild = message.guild
-	guild_text_channel = queries.get_guilds_preferred_text_channel(str(guild))
+	guild_text_channel = lib.guild_text_channels.get(str(guild))
 
 	if isinstance(message.channel, lib.discord.channel.DMChannel) and message.author != client.user:
 		logger.info(f"{author} sent a DM to Dollar")
@@ -329,8 +337,8 @@ async def on_voice_state_update(member, before, after):
 	ctxafter = after.channel
 	guild = client.get_guild(member.guild.id)
 	user = str(member.display_name)
-	voice_channel = queries.get_guilds_preferred_voice_channel(str(guild))
-	text_channel = queries.get_guilds_preferred_text_channel(str(guild))
+	voice_channel = lib.guild_voice_channels.get(str(guild))
+	text_channel = lib.guild_text_channels.get(str(guild))
 	channel = lib.discord.utils.get(guild.channels, name=voice_channel)
 	comchannel = lib.discord.utils.get(guild.channels, name=text_channel)
 	if channel is not None:
@@ -348,7 +356,7 @@ async def on_voice_state_update(member, before, after):
 			await channel.set_permissions(guild.default_role, connect=False)
 			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
 			category_channel = lib.discord.utils.get(guild.categories, id=category)
-			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
+			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=0)
 			await v_channel.set_permissions(member, manage_channels=True)
 			lib.created_channels.append(v_channel.id)
 			logger.info(f"Successfully created {v_channel} in {str(guild)}")
@@ -387,7 +395,7 @@ async def on_voice_state_update(member, before, after):
 			await channel.set_permissions(guild.default_role, connect=False)
 			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
 			category_channel = lib.discord.utils.get(guild.categories, id=category)
-			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=2)
+			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=0)
 			await v_channel.set_permissions(member, manage_channels=True)
 			lib.created_channels.append(v_channel.id)
 			logger.info(f"Successfully created {v_channel} in {str(guild)}")

@@ -6,7 +6,7 @@ import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 from functions.queries.queries import Queries
 
-logger = GeneralFunctions.setup_logger("dollar.settings")
+logger = GeneralFunctions.setup_logger("settings")
 
 async def is_owner(ctx):
 	return ctx.author.id == ctx.guild.owner_id
@@ -32,7 +32,7 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		guild_id = interaction.guild_id
 		guild = interaction.guild
 		guild_owner = guild.owner
-		text_channel_value = self.text_channel.value
+		text_channel_value = self.text_channel.value.replace(' ', '-')
 		voice_channel_value = self.voice_channel.value
 		shows_channel_value = self.shows_channel.value
 		logger.debug(f"Guild ID: {guild_id}, Text Channel: {text_channel_value}, Voice Channel: {voice_channel_value}, Shows Channel: {shows_channel_value}")
@@ -45,6 +45,11 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 			logger.debug(f"Guild {guild_id} does not exist in database, adding text, voice, and shows channels")
 			Queries.add_guild_to_db(self, str(guild), str(guild_owner))
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
+		
+		#NOTE: Update text, voice channel caches
+		lib.guild_text_channels[str(guild)] = text_channel_value
+		lib.guild_voice_channels[str(guild)] = voice_channel_value
+		logger.info(f"Text and voice channel caches updated for guild {guild_id}")
 
 		logger.info(f"Settings saved for guild {guild_id}")
 		await interaction.response.send_message("Settings Saved! Creating your channels", ephemeral=True)

@@ -3,7 +3,8 @@ DESCRIPTION: Music commands reside here
 """
 
 from ..common.libraries import(
-	discord, commands, genius, wavelink, os, read_csv, random, asyncio, sp, artist
+	discord, commands, genius, wavelink, os,
+	read_csv, random, asyncio, sp, artist
 )
 
 from ..common.generalfunctions import GeneralFunctions

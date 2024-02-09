@@ -43,6 +43,8 @@ artist = ''
 created_channels = []
 START_TIME = time.time()
 user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
+guild_text_channels = {}
+guild_voice_channels = {}
 
 # Auth Tokens for API's
 DISCORD_TOKEN = os.getenv('TOKEN')

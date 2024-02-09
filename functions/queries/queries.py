@@ -9,7 +9,7 @@ from ..common.libraries import(
 
 from ..common.generalfunctions import GeneralFunctions
 
-logger = GeneralFunctions.setup_logger("postgres.queries")
+logger = GeneralFunctions.setup_logger("queries")
 
 class Queries(commands.Cog):
 	"""
@@ -252,11 +252,13 @@ class Queries(commands.Cog):
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to add guild")
 		query = """
-			INSERT INTO guilds (guild_name, owner_id) 
-			VALUES (%s, (SELECT user_id FROM users WHERE username = %s))
-			ON CONFLICT (guild_name) DO NOTHING
+			INSERT INTO guilds (guild_name, owner_id)
+			SELECT %s, user_id FROM users 
+			WHERE username = %s AND NOT EXISTS (
+				SELECT 1 FROM guilds WHERE guild_name = %s
+			)
 		"""
-		params = (guild_name, user_name)
+		params = (guild_name, user_name, guild_name)
 		cursor.execute(query, params)
 		logger.debug("Query to add guild executed")
 		self.mydb.commit()

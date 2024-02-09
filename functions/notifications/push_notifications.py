@@ -5,7 +5,7 @@ import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 from functions.queries.queries import Queries
 
-logger = GeneralFunctions.setup_logger("dollar.notifications")
+logger = GeneralFunctions.setup_logger("notifications")
 
 class PushNotifications(lib.commands.Cog):
 	"""
@@ -33,7 +33,6 @@ class PushNotifications(lib.commands.Cog):
 		for user in users:
 			logger.info(f"Sending patch note notification for user: {user}")
 			await thread.send(f"<@{user}>, {game_name} has had a new update, check it out!")
-
 
 async def setup(bot):
 	await bot.add_cog(PushNotifications(bot))

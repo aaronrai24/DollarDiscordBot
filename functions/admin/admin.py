@@ -4,9 +4,6 @@ DESCRIPTION: Admin/Mod only commands reside here
 from ..common.libraries import(
 	commands, ADMIN, MOD
 )
-# from ..common.generalfunctions import(
-# 	setup_logger
-# )
 from ..common.generalfunctions import GeneralFunctions
 
 logger = GeneralFunctions.setup_logger("administrative")
