@@ -1,21 +1,31 @@
-Dollar 1.1.4 represents a significant cleanup effort, addressing lingering issues from its earlier, smaller-scale iterations. We are thrilled to announce that a major update is in the works, bringing with it exciting new features.
+Long awaited update to Dollar! Dollar 2.0 includes a deeper integration with the Spotipy API, allowing users to search for playlists on Spotify. In addition, we have added new features that DM users with an ETA to work, the weather forecast, and NFL scores. 
 
-## Roadmap Highlights
+## New Features
 
-Our future plans include a deeper integration with the Spotipy API, opening up new possibilities for Dollar's functionality. In the upcoming update, our goal is to elevate Dollar beyond being just Cash's personal assistant to a tool that caters to everyone's needs. Imagine automating daily tasks such as checking scores, monitoring the weather, and estimating commute times for work. Checkout the [issues](https://github.com/aaronrai24/DollarDiscordBot/issues) board for a sneak peek on new features projected for Dollar 2.0!
+### Patch Note Notifications
+- Added a new feature to get pinged for new patch notes for a game you are subscribed to.
+- Simply add a 🔔 emoji as a reaction to a game you want to be notified for and Dollar will create a thread on subsequent patch note updates and @you in the thread.
+- To unsubscribe, simple add a ❌ emoji as a reaction to the game you want to unsubscribe from.
 
-## Fixes and Enhancements
+### Deeper Integration with Spotipy API
+- Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify. This command will play the first result found on Spotify.
+- Added a new command, `!lofi`, that plays lofi playlist on Spotify.
 
-### Consistent Coding and Improved Contribution Process
+### ETA to Work Notifications
+- Added a new feature that DMs users with an ETA to work based on their home address and work address. This feature is activated by setting the home and work addresses using the /setup command. The ETA is calculated using the Google Maps API.
+- DMs are sent at 6:30 AM every weekday morning. This feature is disabled on weekends.
+- Disclaimer: This feature stores home and work addresses in a database. The addresses are only used to calculate the ETA to work and are not used for any other purpose.
 
-- Pylinted the entire Dollar code base to ensure consistent coding practices and a cleaner programming environment. This makes contributing to Dollar significantly more accessible and streamlined.
+### Weather Notifications
+- Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the /setup command. The weather forecast is calculated using the OpenWeatherMap API.
+- DMs are sent at 6:30 AM every morning. This feature is disabled on weekends.
+- Disclaimer: This feature stores home addresses in a database. The addresses are only used to calculate the weather forecast and are not used for any other purpose.
 
-### Improved User Experience
+### NFL Score Notifications
+- Added a new feature that posts scores to the `#sports` channel.
+- Scores are posted at 1:00 PM, 5:30 PM, and 9:30 PM every Sunday.
 
-- Incorporated shutdown warnings for when the Dollar system becomes inactive. Additionally, this feature will now ping `@Cash` to promptly notify of an unplanned shutdown.
-- Added inactivity message for Dollar after 10 minutes has been reached. Dollar will clear the `commands` chat and then log a message about inactivity.
-- Enhanced consistency in embed usage across general messages and error notifications to deliver clear and user-friendly messages, ensuring a more intuitive and streamlined experience for users.
-- Added more error handling for internal debugging, along with visible messages to users for all errors.
-- Resolved an issue where Dollar would persistently remain active, even after 10 minutes of inactivity.
-- Resolved an issue where patch notes would not display on startup.
-- Resolved an issue where DEBUG logging would not display in `discord.log`
+
+### Bug Fixes and small enhancements
+- Added more debug loggers `[#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)` to help with debugging codebase
+- Addressed java.lang.RuntimeException `[#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)` by updating Java on Dollar's server

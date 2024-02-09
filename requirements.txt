@@ -12,7 +12,6 @@ frozenlist==1.3.3
 idna==3.4
 lyricsgenius==3.0.1
 multidict==6.0.2
-mysql-connector-python==8.0.33
 numpy==1.24.0
 pandas==1.5.2
 pip==23.1.2
@@ -34,3 +33,4 @@ urllib3==1.26.14
 wavelink==1.3.3
 yarl==1.8.1
 youtube-dl==2021.12.17
+psycopg2-binary

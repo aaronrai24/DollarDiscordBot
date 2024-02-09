@@ -1,4 +1,3 @@
-**Music Commands**
 - `!join`  - Bot joins voice channel you are currently in 
 - `!leave`  - Bot leaves voice channel
 - `!play` (Song)  - Plays desired song from YouTube Music

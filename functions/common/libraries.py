@@ -1,12 +1,8 @@
+# pylint: skip-file
 """
 DESCRIPTION: All file imports, global variables, auth tokens reside here
 Ok to ignore unused libraries
 """
-#pylint: disable=unused-import
-#pylint: disable=redefined-builtin
-#pylint: disable=wildcard-import
-#pylint: disable=ungrouped-imports
-#pylint: disable=unused-wildcard-import
 import discord
 import os
 import wavelink
@@ -24,7 +20,7 @@ import signal
 import spotipy
 import requests
 import json
-import mysql.connector
+import psycopg2
 
 from bs4 import BeautifulSoup
 from datetime import date
@@ -34,17 +30,21 @@ from dotenv import load_dotenv
 from lyricsgenius import Genius
 from spotipy.oauth2 import SpotifyClientCredentials
 from collections import defaultdict
-from mysql.connector import pooling
+from psycopg2 import pool
+from psycopg2 import ProgrammingError, IntegrityError, DatabaseError, Error
+from functools import wraps
 
 load_dotenv()
 
 # Global Variables
 ADMIN = '⚡️'
 MOD = '🌩️'
-artist = '' #pylint: disable=invalid-name
+artist = ''
 created_channels = []
 START_TIME = time.time()
 user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
+guild_text_channels = {}
+guild_voice_channels = {}
 
 # Auth Tokens for API's
 DISCORD_TOKEN = os.getenv('TOKEN')
@@ -54,6 +54,8 @@ CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 TRACKER_GG = os.getenv('TRACKERGG')
 RIOT_TOKEN = os.getenv('RIOTTOKEN')
 GITHUB_TOKEN = os.getenv('GITHUBTOKEN')
+PATCHES_CHANNEL = os.getenv('PATCHES_CHANNEL')
+DEVELOPER = os.getenv('CASH')
 
 # Authenticate application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)

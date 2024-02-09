@@ -114,8 +114,10 @@ disable=abstract-method,
         no-else-return,
         no-init,  # added
         no-member,
+        no-method-argument, # added
         no-name-in-module,
         no-self-use,
+        no-self-argument, # added
         nonzero-method,
         oct-method,
         old-division,

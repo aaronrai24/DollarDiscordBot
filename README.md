@@ -37,9 +37,9 @@ or use the setup.bat to run this code automatically
 - To install Lavalink see this [repository](https://github.com/lavalink-devs/Lavalink)
 - Recommended Java Version is `Java 17.0.1`
 
-### Install MySQL database
-- To install MySQL see this [link](https://dev.mysql.com/downloads/installer/)
-- Dollar currently uses a MySQL database for watchlist features, for schema export please contact a contributor of Dollar
+### Install PostgreSQL database
+- To install PostgreSQL see this [link](https://www.postgresql.org/download/)
+- Dollar currently uses a Postgres database for notification features, for schema export please contact a contributor of Dollar
 
 ### API Auth Keys
 - Numerous Keys are required to take advantage of Dollars Spotify, Game and GitHub commands. Here is a list of API keys that are used:
@@ -59,5 +59,8 @@ Summary of loggers:
 - game-commands: Relates to game commands
 - watchlist: Relates to watchlist commands
 - core: General logger that is used in Dollar's core functions that are used repeatedly
+- dollar: General logger that is used in Dollar's core functions that are used repeatedly
 - diagnostic: Relates to Dollar diagnostic commands that are ADMIN only. Ensures diagnostic commands are working properly
 - administrative: Relates to administrative commands
+- queries: Relates to database queries
+- settings: Relates to settings commands
