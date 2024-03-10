@@ -1,4 +1,4 @@
-aiohttp==3.8.3
+aiohttp==3.9.3
 aiosignal==1.3.1
 async-timeout==4.0.2
 attrs==22.1.0
@@ -7,18 +7,18 @@ beautifulsoup4==4.11.2
 certifi==2022.12.7
 cffi==1.15.1
 charset-normalizer==2.1.1
-discord.py==2.3.0
-frozenlist==1.3.3
+discord.py==2.3.2
+frozenlist==1.4.1
 idna==3.4
 lyricsgenius==3.0.1
-multidict==6.0.2
+multidict==6.0.5
 mysql-connector-python==8.0.33
-numpy==1.24.0
+# numpy==1.24.0
 pandas==1.5.2
-pip==23.1.2
 psutil==5.9.4
 pycodestyle==2.10.0
 pycparser==2.21
+pylint==3.1.0
 PyNaCl==1.5.0
 python-dateutil==2.8.2
 python-dotenv==0.21.0
@@ -28,9 +28,9 @@ requests==2.28.2
 setuptools==49.2.1
 six==1.16.0
 soupsieve==2.4
-spotipy==2.23.0
+spotipy==2.23
 tomli==2.0.1
 urllib3==1.26.14
-wavelink==1.3.3
-yarl==1.8.1
+wavelink==3.2.0
+yarl==1.9.4
 youtube-dl==2021.12.17
