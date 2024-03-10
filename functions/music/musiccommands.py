@@ -21,14 +21,14 @@ class Music(commands.Cog):
 		self.bot = bot
 
 	@commands.Cog.listener()
-	#pylint: disable=unused-argument
-	async def on_wavelink_track_start(self, player: CustomPlayer, track: wavelink.Track):
+	async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
+		track: wavelink.Playable = payload.track
 		global artist
 		artist = track.author
 		
 	@commands.Cog.listener()
-	#pylint: disable=unused-argument
-	async def on_wavelink_track_end(self, player: CustomPlayer, track: wavelink.Track, reason):
+	async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
+		player: wavelink.Player = payload.player
 		if not player.queue.is_empty:
 			await asyncio.sleep(.5)
 			next_track = player.queue.get()
@@ -59,79 +59,55 @@ class Music(commands.Cog):
 	# Play a song, ex: !play starboy the weeknd
 	@commands.command(aliases=["Play"])
 	@is_connected_to_voice()
-	async def play(self, ctx, *, search: wavelink.YouTubeMusicTrack):
+	async def play(self, ctx, *, query):
+		tracks: wavelink.Search = await wavelink.Playable.search(query)
+		search: wavelink.Playable = tracks[0]
 		vc = ctx.voice_client
 		if not vc:
 			custom_player = CustomPlayer()
 			vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
 			await vc.set_volume(5)
 
-		if vc.is_playing():
-			vc.queue.put(item=search)
+		if vc.playing:
+			vc.queue.put(search)
 			embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
 			embed.set_author(name=f"{search.author}")
-			embed.set_thumbnail(url=f"{search.thumbnail}")
+			embed.set_thumbnail(url=f"{search.artwork}")
 			if vc.queue.is_empty:
 				embed.set_footer(text="Queue is empty")
 			else:
 				nextitem = vc.queue.get()
-				vc.queue.put_at_front(item=nextitem)
+				vc.queue.put_at(0, nextitem)
 				embed.set_footer(text=f"Next song is: {nextitem}")
 			await ctx.send(embed=embed)
 			logger.info(f"Queued from YouTube: {search.title}")
 		else:
 			embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
 			embed.set_author(name=f"{search.author}")
-			embed.set_thumbnail(url=f"{search.thumbnail}")
+			embed.set_thumbnail(url=f"{search.artwork}")
 			await ctx.send(embed=embed)
 			await vc.play(search)
 			logger.info(f"Playing from YouTube: {search.title}")
 
-	# Play a song from SoundCloud, ex: !play Jackboy Seduction
-	@commands.command(aliases=["Playsc", "soundcloud", "sc"])
-	@is_connected_to_voice()
-	async def playsc(self, ctx, *, search: wavelink.SoundCloudTrack):
-		vc = ctx.voice_client
-		if not vc:
-			custom_player = CustomPlayer()
-			vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
-			await vc.set_volume(5)  # initially set volume to 5
-
-		if vc.is_playing():
-			vc.queue.put(item=search)
-			embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
-			embed.set_author(name=f"{search.author}")
-			if vc.queue.is_empty:
-				embed.set_footer(text="Queue is empty")
-			else:
-				nextitem = vc.queue.get()
-				vc.queue.put_at_front(item=nextitem)
-				embed.set_footer(text=f"Next song is: {nextitem}")
-			await ctx.send(embed=embed)
-			logger.info(f"Queued from SoundCloud: {search.title}")
-		else:
-			embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
-			embed.set_author(name=f"{search.author}")
-			await ctx.send(embed=embed)
-			await vc.play(search)
-			logger.info(f"Playing from SoundCloud: {search.title}")
-
 	# Skip current song and play next, ex !playskip blinding lights the weeknd
 	@commands.command(aliases=["Playskip", "PlaySkip"])
 	@is_connected_to_same_voice()
-	async def playskip(self, ctx, *, search: wavelink.YouTubeMusicTrack):
+	async def playskip(self, ctx, *, query):
+		tracks: wavelink.Search = await wavelink.Playable.search(query)
+		search: wavelink.Playable = tracks[0]
 		vc = ctx.voice_client
+		
 		if vc:
-			if vc.is_playing() and not vc.is_paused():
-				vc.queue.put_at_front(item=search)
-				await vc.seek(vc.track.length * 1000)
+			if vc.playing and not vc.paused:
+				vc.queue.put_at(0, search)
+				await vc.seek(vc.current.length * 1000)
 				await ctx.send("Playing the next song...")
 				embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
 				embed.set_author(name=f"{search.author}")
-				embed.set_thumbnail(url=f"{search.thumbnail}")
+				embed.set_thumbnail(url=f"{search.artwork}")
 				await ctx.send(embed=embed)
 				logger.info(f"Playskipping to: {search.title}")
-			elif vc.is_paused():
+			elif vc.paused:
 				msg = "The bot is currently paused, to playskip, first resume music with !resume"
 				await send_embed_error("Dollar is Paused", msg, ctx)
 			else:
@@ -146,20 +122,37 @@ class Music(commands.Cog):
 	async def skip(self, ctx):
 		vc = ctx.voice_client
 		if vc:
-			if not vc.is_playing():
+			if not vc.playing:
 				msg = "Nothing is currently playing."
 				return await send_embed_error("No Song Playing", msg, ctx)
 			if vc.queue.is_empty:
 				return await vc.stop()
 
-			await vc.seek(vc.track.length * 1000)
+			await vc.seek(vc.current.length * 1000)
 			search = vc.queue.get()
-			vc.queue.put_at_front(item=search)
+			vc.queue.put_at(0, search)
 			msg = f"Skipping to next song: {search}"
 			await send_embed("Skipping Song", "dollarMusic.png", msg, ctx)
 			logger.info("Skipping music")
-			if vc.is_paused():
-				await vc.resume()
+			if vc.paused:
+				await vc.pause(False)
+		else:
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+
+	# Replay current song, ex: !replay
+	@commands.command(aliases=["Replay"])
+	@is_connected_to_same_voice()
+	async def replay(self, ctx):
+		vc = ctx.voice_client
+		if vc:
+			if vc.playing:
+				await vc.seek(0)
+				msg = "Replaying current song!"
+				await send_embed("Replaying...", "dollarMusic.png", msg, ctx)
+				logger.info("Replaying music")
+			else:
+				msg = "Nothing is currently playing"
+				await send_embed_error("No Song Playing", msg, ctx)
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
@@ -169,8 +162,8 @@ class Music(commands.Cog):
 	async def pause(self, ctx):
 		vc = ctx.voice_client
 		if vc:
-			if vc.is_playing() and not vc.is_paused():
-				await vc.pause()
+			if vc.playing and not vc.paused:
+				await vc.pause(True)
 				msg = "Pausing Music Player!"
 				await send_embed("Pausing...", "dollarMusic.png", msg, ctx)
 				logger.info("Pausing music")
@@ -186,8 +179,8 @@ class Music(commands.Cog):
 	async def resume(self, ctx):
 		vc = ctx.voice_client
 		if vc:
-			if vc.is_paused():
-				await vc.resume()
+			if vc.paused:
+				await vc.pause(False)
 				msg = "Resuming Music Player!"
 				await send_embed("Resuming...", "dollarMusic.png", msg, ctx)
 				logger.info("Resuming music")
@@ -202,9 +195,9 @@ class Music(commands.Cog):
 	@is_connected_to_same_voice()
 	async def nowplaying(self, ctx):
 		vc = ctx.voice_client
-		track = str(vc.track)
+		track = str(vc.current)
 
-		if vc.is_playing():
+		if vc.playing:
 			async with ctx.typing():
 				while True:
 					try:
@@ -235,7 +228,7 @@ class Music(commands.Cog):
 		if vc:
 			try:
 				search = vc.queue.get()
-				vc.queue.put_at_front(item=search)
+				vc.queue.put_at(0, search)
 				msg = f"The next song is: {search}"
 				await send_embed("Next Song...", "dollarMusic.png", msg, ctx)
 				logger.info("Printing next song in queue")
@@ -252,8 +245,8 @@ class Music(commands.Cog):
 		vc = ctx.voice_client
 		val = int(seek)
 		if vc:
-			if vc.is_playing() and not vc.is_paused():
-				await vc.seek(vc.track.length * val)
+			if vc.playing and not vc.paused:
+				await vc.seek(vc.current.length * val)
 				msg = f"Seeking {val} seconds."
 				await send_embed("Seeking...", "dollarMusic.png", msg, ctx)
 				logger.info(f"Song seeked for {val} seconds")
@@ -339,8 +332,8 @@ class Music(commands.Cog):
 					break
 				item = random.choice(song)
 				song.remove(item)
-				search = await wavelink.YouTubeMusicTrack.search(query=item[0] + " " + item[1], return_first=True)
-				if vc.is_playing():
+				search = await wavelink.Playable.search(query=item[0] + " " + item[1], return_first=True)
+				if vc.playing:
 					async with ctx.typing():
 						vc.queue.put(item=search)
 						logger.info(f"Added {search} to queue from playlist")
@@ -393,8 +386,8 @@ class Music(commands.Cog):
 			while tracks:
 				item = str(random.choice(tracks))
 				tracks.remove(item)
-				search = await wavelink.YouTubeMusicTrack.search(query=item, return_first=True)
-				if vc.is_playing():
+				search = await wavelink.Playable.search(query=item, return_first=True)
+				if vc.playing:
 					async with ctx.typing():
 						vc.queue.put(item=search)
 						logger.info(f"Added {search} to queue from Spotify generated playlist")
@@ -414,9 +407,9 @@ class Music(commands.Cog):
 	@is_connected_to_same_voice()
 	async def lyrics(self, ctx):
 		vc = ctx.voice_client
-		track = str(vc.track)
+		track = str(vc.current)
 
-		if vc.is_playing():
+		if vc.playing:
 			async with ctx.typing():
 				while True:
 					try:

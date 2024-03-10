@@ -2,8 +2,8 @@
 - `!join`  - Bot joins voice channel you are currently in 
 - `!leave`  - Bot leaves voice channel
 - `!play` (Song)  - Plays desired song from YouTube Music
-- `!playsc` (Song) - Plays desired song from SoundCloud
 - `!skip`  - Skips current song
+- `!replay` - Restarts current playing song
 - `!pause`  - Pauses currently playing song
 - `!resume`  - Resumes last played song 
 - `!seek` (int value)  - Fast forward or backtrack current playing song
