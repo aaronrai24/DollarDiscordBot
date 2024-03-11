@@ -79,26 +79,16 @@ async def connect_nodes():
 	DESCRIPTION: Connect to Wavelink Node
 	"""
 	await client.wait_until_ready()
-	await lib.wavelink.NodePool.create_node(
-		bot=client,
-		host="127.0.0.1",
-		port=2333,
-		password="discordTest123"
-	)
+	#NOTE: Connect to Wavelink
+	nodes = [wavelink.Node(uri="http://localhost:2333", password="discordTest123")]
+	await wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
+	logger.info(f"Node: <{nodes}> is ready")
+	await client.change_presence(activity=discord.Game(name=" Music! | !help"))
 
 #------------------------------------------------------------------------------------------------
 # Client Events
-#------------------------------------------------------------------------------------------------
-@client.event
-async def on_wavelink_node_ready(node: lib.wavelink.Node):
-	"""
-	DESCRIPTION: Connected to Wavelink Node
-	PARAMETERS: node - Wavelink Node
-	"""
-	logger.info(f"Node: <{node.identifier}> is ready")
-	logger.info(f"Logged in as {node.bot.user} ({node.bot.user.id})")
-	await client.change_presence(activity=lib.discord.Game(name=" Dollar 2.0!"))
 
+# Event was created
 @client.event
 async def on_scheduled_event_create(event):
 	"""
