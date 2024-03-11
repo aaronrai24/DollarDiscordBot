@@ -155,7 +155,7 @@ class GeneralFunctions():
 							desc = file.read()
 
 					embed = discord.Embed(
-						title="Patch: 1.1.4",
+						title="Patch: 2.0-rc1",
 						url="https://en.wikipedia.org/wiki/Dollar",
 						description=desc,
 						colour=discord.Color.green()

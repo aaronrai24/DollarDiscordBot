@@ -80,10 +80,10 @@ async def connect_nodes():
 	"""
 	await client.wait_until_ready()
 	#NOTE: Connect to Wavelink
-	nodes = [wavelink.Node(uri="http://localhost:2333", password="discordTest123")]
-	await wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
+	nodes = [lib.wavelink.Node(uri="http://localhost:2333", password="discordTest123")]
+	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
 	logger.info(f"Node: <{nodes}> is ready")
-	await client.change_presence(activity=discord.Game(name=" Music! | !help"))
+	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
 
 #------------------------------------------------------------------------------------------------
 # Client Events
