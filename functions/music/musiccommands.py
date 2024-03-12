@@ -443,6 +443,12 @@ class Music(commands.Cog):
 		elif isinstance(error, commands.MissingRequiredArgument):
 			await GeneralFunctions.send_embed_error("Missing Required Argument", error, ctx)
 			logger.error("User did not provide a song when using !play")
-
+		elif isinstance(error, wavelink.WavelinkException):
+			await GeneralFunctions.send_embed_error("Wavelink Error", error, ctx)
+			logger.error(f"Wavelink error: {error}")
+		elif isinstance(error, wavelink.LavalinkLoadException):
+			await GeneralFunctions.send_embed_error("Lavalink Load Error", error, ctx)
+			logger.error(f"Lavalink Load error: {error}")
+		
 async def setup(bot):
 	await bot.add_cog(Music(bot))

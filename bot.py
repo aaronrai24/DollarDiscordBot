@@ -433,8 +433,14 @@ async def on_command_error(ctx, error):
 	elif isinstance(error, lib.commands.CommandOnCooldown):
 		await GeneralFunctions.send_embed_error("Command Cooldown", error, ctx)
 		logger.warning(f"Command on cooldown for user {ctx.author}")
+	elif isinstance(error, lib.wavelink.LavalinkException):
+		await GeneralFunctions.send_embed_error("Lavalink Error", error, ctx)
+		logger.error("Lavalink error occurred")
+	elif isinstance(error, lib.wavelink.InvalidChannelStateException):
+		await GeneralFunctions.send_embed_error("Invalid Channel State", error, ctx)
+		logger.error("Invalid channel state")
 	else:
-		msg = "An unexpected error occurred while processing your command. Please use /ticket."
+		msg = "An unexpected error occurred while processing your command. Please use /reportbug."
 		await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)
 		logger.exception("Unexpected error occurred", exc_info=error)
 
