@@ -10,6 +10,122 @@ from ..common.generalfunctions import GeneralFunctions
 
 logger = GeneralFunctions.setup_logger("diagnostic")
 
+class ReportBugModel(discord.ui.modal, title="Report Bug"):
+	"""
+	DESCRIPTION: Creates Report Bug Model
+	PARAMETERS: discord.ui.modal - Discord Modal
+	"""
+
+	def __init__(self, bot):
+		self.bot = bot
+	
+	bug_title = discord.ui.TextInput(label="Bug Title", placeholder="Enter Bug Title", required=True)
+	bug_description = discord.ui.TextArea(placeholder='Enter a detailed description of the bug', label='Bug Description', required=True)
+
+	async def on_submit(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on submit of Report Bug Model
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		bug_title = self.bug_title.value
+		bug_description = self.bug_description.value
+		author = interaction.user
+		server = interaction.guild
+
+		issue_body = f"Bug report: {bug_description}\n\nSubmitted by: {author}\nServer: {server}"
+		payload = {"title": bug_title, "body": issue_body, "labels": ["bug"]}
+
+		repository = "DollarDiscordBot"
+		owner = "aaronrai24"
+		access_token = GITHUB_TOKEN
+
+		url = f"https://api.github.com/repos/{owner}/{repository}/issues"
+
+		headers = {"Authorization": f"token {access_token}"}
+
+		response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+		if response.status_code == 201:
+			logger.info("Added bug report to GitHub issues")
+		else:
+			await interaction.response.send_message("Failed to add bug report to GitHub issues.", ephemeral=True)
+			logger.error(f"Failed to add bug report to GitHub issues: {response.text}")
+
+	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+		"""
+		DESCRIPTION: Fires on error of Settings Modal
+		PARAMETERS: discord.Interaction - Discord Interaction
+		"""
+		if isinstance(error, discord.NotFound):
+			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
+		elif isinstance(error, discord.Forbidden):
+			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
+		elif isinstance(error, discord.HTTPException):
+			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
+		else:
+			message = "Oops! Something went wrong. Please report this bug using /reportbug."
+
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
+
+class FeatureRequestModel(discord.ui.modal, title="Feature Request"):
+	"""
+	DESCRIPTION: Creates Feature Request Model
+	PARAMETERS: discord.ui.modal - Discord Modal
+	"""
+
+	def __init__(self, bot):
+		self.bot = bot
+
+	feature_title = discord.ui.TextInput(label="Feature Title", placeholder="Enter Feature Title", required=True)
+	feature_description = discord.ui.TextArea(placeholder='Enter a detailed description of the feature', label='Feature Description', required=True)
+
+	async def on_submit(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on submit of Feature Request Model
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		feature_title = self.feature_title.value
+		feature_description = self.feature_description.value
+		author = interaction.user
+		server = interaction.guild
+		
+		issue_body = f"Feature request: {feature_description}\n\nSubmitted by: {author}\nServer: {server}"
+		payload = {"title": feature_title, "body": issue_body, "labels": ["enhancement"]}
+
+		repository = "DollarDiscordBot"
+		owner = "aaronrai24"
+		access_token = GITHUB_TOKEN
+
+		url = f"https://api.github.com/repos/{owner}/{repository}/issues"
+
+		headers = {"Authorization": f"token {access_token}"}
+
+		response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+		if response.status_code == 201:
+			logger.info("Added feature request to GitHub issues")
+		else:
+			await interaction.response.send_message("Failed to add feature request to GitHub issues.", ephemeral=True)
+			logger.error(f"Failed to add feature request to GitHub issues: {response.text}")
+	
+	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+		"""
+		DESCRIPTION: Fires on error of Settings Modal
+		PARAMETERS: discord.Interaction - Discord Interaction
+		"""
+		if isinstance(error, discord.NotFound):
+			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
+		elif isinstance(error, discord.Forbidden):
+			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
+		elif isinstance(error, discord.HTTPException):
+			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
+		else:
+			message = "Oops! Something went wrong. Please report this bug using /reportbug."
+
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
+
 class Debugging(commands.Cog):
 	"""
 	DESCRIPTION: Creates Debugging Class
@@ -18,7 +134,6 @@ class Debugging(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
-	# /status App command, Check dollar diagnostics, CPU, RAM, Uptime
 	@discord.app_commands.command(name="status", description="Dollar server status, CPU usage, Memory usage, Uptime, etc.")
 	async def status(self, interaction: discord.Interaction):
 		"""
@@ -38,74 +153,13 @@ class Debugging(commands.Cog):
 		await interaction.response.send_message(response_message)
 
 	@discord.app_commands.command(name="reportbug", description="Report a bug to the developer")
-	async def reportbug(self, interaction: discord.Interaction, bug_title: str, bug_description: str):
+	async def reportbug(self, interaction: discord.Interaction):
 		"""
 		DESCRIPTION: Submit a bug
 		PARAMETERS: interaction - Discord interaction
 		"""
-		author = interaction.user
-		server = interaction.guild
-
-		now = time.time()
-		user_info = user_usage[author.id]
-		if now - user_info["timestamp"] < 3600 and user_info["count"] >= 3:
-			await interaction.response.send_message("You have exceeded the rate limit for this command. Please try again later.", ephemeral=True)
-			return
-		
-		user_info["timestamp"] = now
-		user_info["count"] += 1
-		
-		#pylint: disable=line-too-long
-		embed = discord.Embed(title="Bug Report", description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {bug_title}\n\nDescription: {bug_description}", color=discord.Color.green())
-		logger.info(f"{author} submitted a bug in {server}")
-
-		user = await self.bot.fetch_user("223947980309397506")
-		message = await user.send(embed=embed)
-		await interaction.response.send_message("Bug report submitted successfully!", ephemeral=True)
-
-		await message.add_reaction("✅")
-		await message.add_reaction("❌")
-
-		def check(reaction, user):
-			return user and str(reaction.emoji) in ["✅", "❌"]
-
-		try:
-			reaction, user = await self.bot.wait_for("reaction_add", check=check)
-		except asyncio.TimeoutError:
-			await message.reply("The bug report was not accepted or declined in time.", mention_author=False)
-			logger.warning("Developer did not accept/decline bug report, timing out")
-			return
-
-		if str(reaction.emoji) == "✅":
-			user_embed = discord.Embed(title="Bug Report", description=f"Your bug report regarding '{bug_title}' has been accepted!", color=discord.Color.green())
-			issue_title = bug_title
-			issue_body = f"Bug report: {bug_description}\n\nSubmitted by: {author}\nServer: {server}"
-			payload = {"title": issue_title, "body": issue_body, "labels": ["bug"]}
-
-			repository = "DollarDiscordBot"
-			owner = "aaronrai24"
-			access_token = GITHUB_TOKEN
-
-			url = f"https://api.github.com/repos/{owner}/{repository}/issues"
-
-			headers = {"Authorization": f"token {access_token}"}
-
-			response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-			if response.status_code == 201:
-				logger.info("Added bug report to GitHub issues")
-			else:
-				await message.reply("Failed to add bug report to GitHub issues.", mention_author=False)
-				logger.error(f"Failed to add bug report to GitHub issues: {response.text}")
-
-		else:
-			user_embed = discord.Embed(title="Bug Report", description=f"Your bug report regarding '{bug_title}' has been declined.", color=discord.Color.red())
-		
-		try:
-			await author.send(embed=user_embed)
-			logger.info(f"Sent notification to {author}")
-		except discord.errors.Forbidden:
-			logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
+		logger.info(f"Creating Report Bug Model for user {interaction.user.name}")
+		await interaction.response.send_message("Please fill out the form to report a bug.", ephemeral=True)
 
 	@discord.app_commands.command(name="featurerequest", description="Submit a feature request to the developer")
 	async def featurerequest(self, interaction: discord.Interaction, feature_title: str, feature_description: str):
@@ -113,69 +167,8 @@ class Debugging(commands.Cog):
 		DESCRIPTION: Submit a feature request
 		PARAMETERS: interaction - Discord interaction
 		"""
-		author = interaction.user
-		server = interaction.guild
-		
-		now = time.time()
-		user_info = user_usage[author.id]
-		if now - user_info["timestamp"] < 3600 and user_info["count"] >= 3:
-			await interaction.response.send_message("You have exceeded the rate limit for this command. Please try again later.", ephemeral=True)
-			return
-		
-		user_info["timestamp"] = now
-		user_info["count"] += 1
-		
-		#pylint: disable=line-too-long
-		embed = discord.Embed(title="Feature Request", description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {feature_title}\n\nDescription: {feature_description}", color=discord.Color.green())
-		logger.info(f"{author} submitted a feature request in {server}")
-
-		user = await self.bot.fetch_user("223947980309397506")
-		message = await user.send(embed=embed)
-		await interaction.response.send_message("Feature request submitted successfully!", ephemeral=True)
-
-		await message.add_reaction("✅")
-		await message.add_reaction("❌")
-
-		def check(reaction, user):
-			return user and str(reaction.emoji) in ["✅", "❌"]
-
-		try:
-			reaction, user = await self.bot.wait_for("reaction_add", check=check)
-		except asyncio.TimeoutError:
-			await message.reply("The feature request was not accepted or declined in time.", mention_author=False)
-			logger.warning("Developer did not accept/decline feature request, timing out")
-			return
-
-		if str(reaction.emoji) == "✅":
-			user_embed = discord.Embed(title="Feature Request", description=f"Your feature request regarding '{feature_title}' has been accepted!", color=discord.Color.green())
-			
-			issue_title = feature_title
-			issue_body = f"Feature request: {feature_description}\n\nSubmitted by: {author}\nServer: {server}"
-			payload = {"title": issue_title, "body": issue_body, "labels": ["enhancement"]}  # Add "enhancement" label to the issue
-
-			repository = "DollarDiscordBot"
-			owner = "aaronrai24"
-			access_token = GITHUB_TOKEN
-
-			url = f"https://api.github.com/repos/{owner}/{repository}/issues"
-
-			headers = {"Authorization": f"token {access_token}"}
-
-			response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-			if response.status_code == 201:
-				logger.info("Added feature request to GitHub issues")
-			else:
-				await message.reply("Failed to add feature request to GitHub issues.", mention_author=False)
-				logger.error(f"Failed to add feature request to GitHub issues: {response.text}")
-		else:
-			user_embed = discord.Embed(title="Feature Request", description=f"Your feature request regarding '{feature_title}' has been declined.", color=discord.Color.red())
-		
-		try:
-			await author.send(embed=user_embed)
-			logger.info(f"Sent notification to {author}")
-		except discord.errors.Forbidden:
-			logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
+		logger.info(f"Creating Feature Request Model for user {interaction.user.name}")
+		await interaction.response.send_message("Please fill out the form to submit a feature request.", ephemeral=True)
 
 	@commands.command()
 	async def help(self, ctx, category=None):
