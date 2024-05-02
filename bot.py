@@ -56,10 +56,35 @@ client = UnfilteredBot(command_prefix="!", intents=lib.discord.Intents.all(), he
 logger = GeneralFunctions.setup_logger("dollar")
 
 DISCORD_TOKEN = lib.os.getenv("TOKEN")
+LAVALINK_TOKEN = lib.os.getenv("LAVALINK_TOKEN")
 
 #NOTE: Declarations
 push_notifications = PushNotifications(UnfilteredBot)
 queries = Queries(UnfilteredBot)
+
+async def connect_nodes():
+	"""
+	DESCRIPTION: Connect to Wavelink Node
+	"""
+	await client.wait_until_ready()
+	#NOTE: Connect to Wavelink
+	nodes = [lib.wavelink.Node(uri="http://lavalink:2333", password=LAVALINK_TOKEN, identifier="MAIN", retries=None, heartbeat=60)]
+	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
+	logger.info(f"Node: <{nodes}> is ready")
+	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
+
+#------------------------------------------------------------------------------------------------
+# Tasks
+#------------------------------------------------------------------------------------------------
+@lib.tasks.loop(seconds=60)
+async def validate_db():
+	"""
+	DESCRIPTION: Periodically validate the connection
+	"""
+	await GeneralFunctions.validate_connection(UnfilteredBot.mydb)
+
+#------------------------------------------------------------------------------------------------
+# Client Events
 
 @client.event
 async def on_ready():
@@ -73,20 +98,6 @@ async def on_ready():
 		lib.guild_text_channels[str(guild)] = queries.get_guilds_preferred_text_channel(str(guild))
 		lib.guild_voice_channels[str(guild)] = queries.get_guilds_preferred_voice_channel(str(guild))
 	logger.info(f"Cached text and voice channels, text: {lib.guild_text_channels}, voice: {lib.guild_voice_channels}")
-
-async def connect_nodes():
-	"""
-	DESCRIPTION: Connect to Wavelink Node
-	"""
-	await client.wait_until_ready()
-	#NOTE: Connect to Wavelink
-	nodes = [lib.wavelink.Node(uri="http://localhost:2333", password="discordTest123")]
-	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
-	logger.info(f"Node: <{nodes}> is ready")
-	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
-
-#------------------------------------------------------------------------------------------------
-# Client Events
 
 # Event was created
 @client.event
@@ -443,15 +454,5 @@ async def on_command_error(ctx, error):
 		msg = "An unexpected error occurred while processing your command. Please use /reportbug."
 		await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)
 		logger.exception("Unexpected error occurred", exc_info=error)
-
-#------------------------------------------------------------------------------------------------
-# Tasks
-#------------------------------------------------------------------------------------------------
-@lib.tasks.loop(seconds=60)
-async def validate_db():
-	"""
-	DESCRIPTION: Periodically validate the connection
-	"""
-	await GeneralFunctions.validate_connection(UnfilteredBot.mydb)
 
 client.run(DISCORD_TOKEN)
