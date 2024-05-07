@@ -111,42 +111,56 @@ async def validate_connection(mydb):
 
 async def send_patch_notes(client):
 	"""
-    Send the latest patch notes to the system channel of each guild the bot is a member of.
+	Send the latest patch notes to the system channel of each guild the bot is a member of.
 
-    Parameters:
-    - client (discord.Client): The Discord client instance representing the bot.
+	Parameters:
+	- client (discord.Client): The Discord client instance representing the bot.
 
-    Returns:
-    - None
-    """
+	Returns:
+	- None
+	"""
+	async def send_patch_note_embed(channel, guild):
+		"""
+		Local function to send an embedded message with the latest patch notes to a specified channel.
+
+		Parameters:
+		- channel (discord.TextChannel): The channel where the embed will be sent.
+		- guild (discord.Guild): The guild (server) associated with the channel.
+		"""
+		try:
+			file_path = os.path.join("markdown", "patch_notes.md")
+			if os.path.isfile(file_path):
+				with open(file_path, "r", encoding="utf-8") as file:
+					desc = file.read()
+
+			embed = discord.Embed(
+				title="Patch: 1.1.6",
+				url="https://github.com/aaronrai24/DollarDiscordBot",
+				description=desc,
+				colour=discord.Color.green()
+			)
+			embed.set_author(name="Dollar")
+			file_path = os.path.join("images", "dollar.png")
+			img = discord.File(file_path, filename="dollar.png")
+			embed.set_thumbnail(url="attachment://dollar.png")
+			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+
+			await channel.send(embed=embed, file=img)
+			logger.debug(f"Notified {guild.name} of dollar's latest update.")
+		except discord.Forbidden:
+			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
+		except discord.HTTPException:
+			logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
+
 	for guild in client.guilds:
 		logger.debug(f"Dollar loaded in {guild.name}, owner: {guild.owner}")
 		channel = guild.system_channel
 		if channel is not None:
-			try:
-				file_path = os.path.join("markdown", "patch_notes.md")
-				if os.path.isfile(file_path):
-					with open(file_path, "r", encoding="utf-8") as file:
-						desc = file.read()
-
-				embed = discord.Embed(
-					title="Patch: 1.1.5",
-					url="https://en.wikipedia.org/wiki/Dollar",
-					description=desc,
-					colour=discord.Color.green()
-				)
-				embed.set_author(name="Dollar")
-				file_path = os.path.join("images", "dollar.png")
-				img = discord.File(file_path, filename="dollar.png")
-				embed.set_thumbnail(url="attachment://dollar.png")
-				embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
-
-				await channel.send(embed=embed, file=img)
-				logger.debug(f"Notified {guild.name} of dollar\"s latest update.")
-			except discord.Forbidden:
-				logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
-			except discord.HTTPException:
-				logger.error(f"Could not send message to {channel.name} in {guild.name}. HTTP exception occurred.")
+			await send_patch_note_embed(channel, guild)
+		else:
+			for channel in guild.text_channels:
+				if channel.name == "commands":
+					await send_patch_note_embed(channel, guild)
 
 async def idle_checker(vc, comchannel, guild):
 	"""
