@@ -19,7 +19,7 @@ class Admin(commands.Cog):
 
 	# Clear Messages from channel, ex !clear 50
 	@commands.command(aliases=["purge", "delete"])
-	@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
+	@commands.is_owner()
 	async def clear(self, ctx, amount=None):
 		"""
 		DESCRIPTION: Clears messages from channel
