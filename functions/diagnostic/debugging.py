@@ -4,23 +4,23 @@ DESCRIPTION: Debugging functions reside here
 from ..common.libraries import (
 	discord, os, commands, threading, traceback, sys, time,
 	psutil, asyncio, requests, json, logging, START_TIME, 
-	user_usage, GITHUB_TOKEN
+	GITHUB_TOKEN
 )
 from ..common.generalfunctions import GeneralFunctions
 
 logger = GeneralFunctions.setup_logger("diagnostic")
 
-class ReportBugModel(discord.ui.modal, title="Report Bug"):
+class ReportBugModel(discord.ui.Modal, title="Report Bug"):
 	"""
 	DESCRIPTION: Creates Report Bug Model
 	PARAMETERS: discord.ui.modal - Discord Modal
 	"""
 
-	def __init__(self, bot):
-		self.bot = bot
+	def __init__(self):
+		pass
 	
 	bug_title = discord.ui.TextInput(label="Bug Title", placeholder="Enter Bug Title", required=True)
-	bug_description = discord.ui.TextArea(placeholder='Enter a detailed description of the bug', label='Bug Description', required=True)
+	bug_description = discord.ui.TextInput(placeholder="Enter a detailed description of the bug", label="Bug Description", required=True)
 
 	async def on_submit(self, interaction: discord.Interaction):
 		"""
@@ -47,6 +47,7 @@ class ReportBugModel(discord.ui.modal, title="Report Bug"):
 
 		if response.status_code == 201:
 			logger.info("Added bug report to GitHub issues")
+			await interaction.response.send_message("Bug report submitted successfully.", ephemeral=True)
 		else:
 			await interaction.response.send_message("Failed to add bug report to GitHub issues.", ephemeral=True)
 			logger.error(f"Failed to add bug report to GitHub issues: {response.text}")
@@ -68,17 +69,17 @@ class ReportBugModel(discord.ui.modal, title="Report Bug"):
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
-class FeatureRequestModel(discord.ui.modal, title="Feature Request"):
+class FeatureRequestModel(discord.ui.Modal, title="Feature Request"):
 	"""
 	DESCRIPTION: Creates Feature Request Model
 	PARAMETERS: discord.ui.modal - Discord Modal
 	"""
 
-	def __init__(self, bot):
-		self.bot = bot
+	def __init__(self):
+		pass
 
 	feature_title = discord.ui.TextInput(label="Feature Title", placeholder="Enter Feature Title", required=True)
-	feature_description = discord.ui.TextArea(placeholder='Enter a detailed description of the feature', label='Feature Description', required=True)
+	feature_description = discord.ui.TextInput(placeholder="Enter a detailed description of the feature", label="Feature Description", required=True)
 
 	async def on_submit(self, interaction: discord.Interaction):
 		"""
@@ -105,6 +106,7 @@ class FeatureRequestModel(discord.ui.modal, title="Feature Request"):
 
 		if response.status_code == 201:
 			logger.info("Added feature request to GitHub issues")
+			await interaction.response.send_message("Feature request submitted successfully.", ephemeral=True)
 		else:
 			await interaction.response.send_message("Failed to add feature request to GitHub issues.", ephemeral=True)
 			logger.error(f"Failed to add feature request to GitHub issues: {response.text}")
@@ -159,16 +161,16 @@ class Debugging(commands.Cog):
 		PARAMETERS: interaction - Discord interaction
 		"""
 		logger.info(f"Creating Report Bug Model for user {interaction.user.name}")
-		await interaction.response.send_message("Please fill out the form to report a bug.", ephemeral=True)
+		await interaction.response.send_modal(ReportBugModel())
 
 	@discord.app_commands.command(name="featurerequest", description="Submit a feature request to the developer")
-	async def featurerequest(self, interaction: discord.Interaction, feature_title: str, feature_description: str):
+	async def featurerequest(self, interaction: discord.Interaction):
 		"""
 		DESCRIPTION: Submit a feature request
 		PARAMETERS: interaction - Discord interaction
 		"""
 		logger.info(f"Creating Feature Request Model for user {interaction.user.name}")
-		await interaction.response.send_message("Please fill out the form to submit a feature request.", ephemeral=True)
+		await interaction.response.send_modal(FeatureRequestModel())
 
 	@commands.command()
 	async def help(self, ctx, category=None):
