@@ -1,14 +1,12 @@
 """
 DESCRIPTION: Admin/Mod only commands reside here
 """
-from ..common.libraries import(
-	commands, ADMIN, MOD
-)
+import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 
 logger = GeneralFunctions.setup_logger("administrative")
 
-class Admin(commands.Cog):
+class Admin(lib.commands.Cog):
 	"""
 	DESCRIPTION: Creates Admin class
 	PARAMETERS: commands.Bot - Discord Commands
@@ -18,8 +16,8 @@ class Admin(commands.Cog):
 		self.general_functions = GeneralFunctions()
 
 	# Clear Messages from channel, ex !clear 50
-	@commands.command(aliases=["purge", "delete"])
-	@commands.is_owner()
+	@lib.commands.command(aliases=["purge", "delete"])
+	@lib.commands.is_owner()
 	async def clear(self, ctx, amount=None):
 		"""
 		DESCRIPTION: Clears messages from channel
