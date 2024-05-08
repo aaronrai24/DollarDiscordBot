@@ -109,7 +109,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-application.yml
 Lavalink.jar
 logs/
 *.csv
@@ -133,3 +132,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+plugins/
+application.yml
