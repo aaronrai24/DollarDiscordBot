@@ -100,7 +100,7 @@ class GeneralFunctions():
 			connection_pool = pool.SimpleConnectionPool(
 				1,
 				8,
-				host="localhost",
+				host="db",
 				user=os.getenv("DB_USER"),
 				password=os.getenv("DB_PW"),
 				dbname=os.getenv("DB_SCHEMA")
@@ -208,7 +208,7 @@ class GeneralFunctions():
 			time = time + 1
 			if time % 30 == 0:
 				logger.debug(f"Dollar has been idle for {time} seconds in {str(guild)}")
-			if vc.is_playing() and not vc.is_paused():
+			if vc.playing and not vc.paused:
 				time = 0
 			if time == 600:
 				logger.info(f"10 minutes reached, Dollar disconnecting from {str(guild)}")
@@ -217,7 +217,7 @@ class GeneralFunctions():
 				logger.debug("Finished clearing #commands channel")
 				msg = f"10 minutes reached, Dollar disconnecting from {str(guild)}"
 				await GeneralFunctions.send_embed("Inactivity", "dollar4.png", msg, comchannel)
-			if not vc.is_connected():
+			if not vc.connected:
 				break
 
 	async def send_embed(title, image, msg, channel, footer=False):
