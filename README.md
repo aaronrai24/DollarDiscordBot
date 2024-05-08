@@ -11,45 +11,45 @@ Stay tuned for weekly updates and exciting new features as Dollar continually ev
 
 ## To add Dollar to your Discord:
 Click the following [link](https://discord.com/api/oauth2/authorize?client_id=1044813990473257081&permissions=8&scope=applications.commands%20bot) to add to your Discord!
-- Be sure to run `/setup` upon first loading Dollar into your Discord to automatically setup the requirements.
-
-## Requirements to be able to use Dollar in your discord:
-
-1. You must have a text channel that starts with `commands`. It is recommended to use `commands` as the channel name, but having emojis after the `commands` string is also acceptable.
-
-To use auto channel creation feature:
-
-2. You must have a voice channel titled `JOIN HERE💎`. When users join this voice channel, Dollar recognizes them and automatically creates a channel for each user, moving them to their respective channels. Once a created channel becomes empty, Dollar removes it.
+- Dollar will DM you with a welcome message and what to do next! 
+- For a list of commands, type `!help` in the designated text channel.
 
 ## Issues/Feature Requests
 
-We are also tracking numerous bugs and feature requests on our public [issues board](https://github.com/aaronrai24/DollarDiscordBot/issues). We'd appreciate any bugs/features requests be submitted by using Dollar's `/featurerequest` and `/reportBug` commands.
+We are also tracking numerous bugs and feature requests on our public [issues board](https://github.com/aaronrai24/DollarDiscordBot/issues). We'd appreciate any bugs/features requests be submitted by using Dollar's `/featurerequest` and `/reportbug` commands.
 
 ## For Developers
 
-### Install Dependencies
-To install the required dependencies, run the following command:
-`pip install -r rquirements.txt`
-
-or use the setup.bat to run this code automatically
-
-### Install Lavalink
-- To install Lavalink see this [repository](https://github.com/lavalink-devs/Lavalink)
-- Recommended Java Version is `Java 17.0.1`
-
-### Install PostgreSQL database
-- To install PostgreSQL see this [link](https://www.postgresql.org/download/)
-- Dollar currently uses a Postgres database for notification features, for schema export please contact a contributor of Dollar
+### Docker Setup
+- To run the bot in a docker container, you must first build the image using the following command:
+```bash
+docker build -t dollar .
+```
+- Once the image is built, you can run the container using the following command:
+```bash
+docker compose up
+```
+- This will run the bot, lavalink, and the database in separate containers. The bot will be connected to the database and lavalink automatically.
+- After making code changes, you can rebuild the image and restart the container using the following commands:
+```bash
+docker-compose up --build -d
+```
 
 ### API Auth Keys
 - Numerous Keys are required to take advantage of Dollars Spotify, Game and GitHub commands. Here is a list of API keys that are used:
 1. DISCORD_TOKEN - Discord bot token
-2. genius - Genius lyrics token
-3. CLIENT_ID - Spotify
-4. CLIENT_SECRET - Spotify
-5. TRACKER_GG - TrackerGG
-6. RIOT_TOKEN - RIOT API
-7. GITHUB_TOKEN - Github
+2. GENIUSTOKEN - Genius lyrics token
+3. LAVALINK_TOKEN - Lavalink password
+4. LAVALINK_EMAIL - Lavalink youtube email
+5. LAVALINK_PASSWORD - Lavalink youtube password
+6. CLIENT_ID - Spotify
+7. CLIENT_SECRET - Spotify
+8. TRACKER_GG - TrackerGG
+9. RIOT_TOKEN - RIOT API
+10. GITHUB_TOKEN - Github
+11. DB_USER - Database username
+12. DB_PASS - Database password
+13. DB_SCHEMA - Database schema
 - Store these tokens in a `.env` file following that syntax
 
 ### Logging
