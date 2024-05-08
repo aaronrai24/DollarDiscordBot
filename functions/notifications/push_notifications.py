@@ -29,7 +29,6 @@ class PushNotifications(lib.commands.Cog):
 		logger.debug(f"Users: {users} that are subscribed to {game_name}")
 
 		thread = await message.create_thread(name=f"{game_name} Update Subscriptions")
-		logger.info(f"users: {users}")
 		for user in users:
 			logger.info(f"Sending patch note notification for user: {user}")
 			await thread.send(f"<@{user}>, {game_name} has had a new update, check it out!")

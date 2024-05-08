@@ -32,7 +32,7 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		guild_id = interaction.guild_id
 		guild = interaction.guild
 		guild_owner = guild.owner
-		text_channel_value = self.text_channel.value.replace(" ", "-")
+		text_channel_value = self.text_channel.value.replace(" ", "-").lower()
 		voice_channel_value = self.voice_channel.value
 		shows_channel_value = self.shows_channel.value
 		logger.debug(f"Guild ID: {guild_id}, Text Channel: {text_channel_value}, Voice Channel: {voice_channel_value}, Shows Channel: {shows_channel_value}")
