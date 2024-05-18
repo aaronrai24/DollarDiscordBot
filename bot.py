@@ -239,13 +239,13 @@ async def on_raw_reaction_add(payload):
 	DESCRIPTION: Scan for reactions to messages
 	PARAMETERS: payload - Discord Raw Reaction
 	"""
-	logger.debug(f"Reaction added: {payload}")
 	user_name = str(payload.member)
 	user_id = payload.user_id
 	reaction = payload.emoji.name
 	channel_id = payload.channel_id
 	message_id = payload.message_id
 	message = await client.get_channel(channel_id).fetch_message(message_id)
+	game_name = None
 	if message.embeds:
 		game_name = str(message.embeds[0].title)
 
