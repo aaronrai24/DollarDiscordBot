@@ -166,6 +166,7 @@ class GeneralFunctions():
 			- guild (discord.Guild): The guild (server) associated with the channel.
 			"""
 			try:
+				desc = ""
 				file_path = os.path.join("markdown", "patch_notes.md")
 				if os.path.isfile(file_path):
 					with open(file_path, "r", encoding="utf-8") as file:
