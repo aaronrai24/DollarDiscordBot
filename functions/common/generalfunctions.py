@@ -5,7 +5,7 @@ All general functions should be written here.
 
 from ..common.libraries import(
 	discord, logging, commands, wavelink, os, asyncio,
-	pool
+	pool, requests, BeautifulSoup
 )
 
 class CustomPlayer(wavelink.Player):
@@ -88,6 +88,19 @@ class GeneralFunctions():
 				raise commands.CheckFailure("You need to be the guild owner to use this command")
 			return True
 		return commands.check(predicate)
+	
+	async def get_bot_member(guild: discord.Guild, bot: discord.Client):
+		"""
+		Get the bot instance as a discord.Member object in a specific guild.
+		
+		Parameters:
+		- guild: The guild to get the bot member from.
+		- bot: The bot client.
+	
+		Returns:
+		- discord.Member: The bot instance as a discord.Member object.
+		"""
+		return guild.get_member(bot.user.id)
 
 	def connect_to_database():
 		"""
@@ -265,5 +278,39 @@ class GeneralFunctions():
 		if footer:
 			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
 		await channel.send(embed=embed, file=img)
+
+	def create_embed(title, description, author, image="", footer=""):
+		"""
+		Create an embedded message with a title, description, author, and footer.
+
+		Parameters:
+		- title (str): The title of the embed.
+		- description (str): The description or content of the embed.
+		- author (discord.Member): The author of the embed.
+		- image (str): The filename of the image to be attached.
+		- footer (str): The footer of the embed.
+
+		Returns:
+		- discord.Embed: The embed object.
+		"""
+		logger.debug(f"Creating embed with title: {title}, description: {description}, author: {author}, footer: {footer}")
+		embed = discord.Embed(title=title, description=description, colour=0x2ecc71)
+		embed.set_author(name=author, icon_url=author.avatar.url)
+		if image:
+			embed.set_thumbnail(url=f"attachment://{image}")
+		if footer:
+			embed.set_footer(text=footer)
+		logger.debug("Embed created successfully, returning...")
+		return embed
+	
+	def get_image_url(name, tag):
+		url = f"https://www.google.com/search?q={name}+{tag}&tbm=isch"
+		headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+			}
+		response = requests.get(url, headers=headers)
+		soup = BeautifulSoup(response.text, "html.parser")
+		image_results = soup.find_all("img")
+		return image_results[1]["src"]
 
 logger = GeneralFunctions.setup_logger("core")

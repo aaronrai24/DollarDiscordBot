@@ -128,6 +128,51 @@ class FeatureRequestModel(discord.ui.Modal, title="Feature Request"):
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
+class HelpView(discord.ui.View):
+	"""
+	DESCRIPTION: Creates Help View
+	PARAMETERS: discord.ui.View - Discord View
+	"""
+	def __init__(self):
+		super().__init__()
+		self.add_item(MyButton(label="Music", style=discord.ButtonStyle.green, custom_id="music"))
+		self.add_item(MyButton(label="Game", style=discord.ButtonStyle.blurple, custom_id="game"))
+		self.add_item(MyButton(label="Slash", style=discord.ButtonStyle.red, custom_id="slash"))
+
+class MyButton(discord.ui.Button):
+	"""
+	DESCRIPTION: Creates Button for Help View
+	PARAMETERS: discord.ui.Button - Discord Button
+	"""
+
+	async def callback(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on button click
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		dollar = await GeneralFunctions.get_bot_member(interaction.guild, interaction.client)
+		command_type = str(self.custom_id)
+
+		if command_type:
+			await self.send_commands(interaction, command_type, dollar)
+
+	async def send_commands(self, interaction, command_type, dollar):
+		"""
+		DESCRIPTION: Send commands based on command type
+		PARAMETERS: interaction - Discord Interaction, command_type - Command Type, dollar - Dollar Bot
+		"""
+		logger.debug(f"Sending {command_type} commands for user {interaction.user.name}")
+		file_path = os.path.join("markdown", f"{command_type}Commands.md")
+		try:
+			with open(file_path, "r", encoding="utf-8") as file:
+				dollar_commands = file.read()
+				embed = GeneralFunctions.create_embed(f"{command_type.capitalize()} Commands", dollar_commands, dollar)
+				await interaction.response.send_message(embed=embed)
+		except FileNotFoundError:
+			logger.error(f"File {file_path} not found")
+		except Exception as e:
+			logger.error(f"Failed to send commands: {e}")
+
 class Debugging(commands.Cog):
 	"""
 	DESCRIPTION: Creates Debugging Class
@@ -172,29 +217,14 @@ class Debugging(commands.Cog):
 		logger.info(f"Creating Feature Request Model for user {interaction.user.name}")
 		await interaction.response.send_modal(FeatureRequestModel())
 
-	@commands.command()
-	async def help(self, ctx, category=None):
+	@discord.app_commands.command(name="help", description="See available commands for Dollar")
+	async def help(self, interaction: discord.Interaction):
 		"""
-		DESCRIPTION: Help command for Dollar
-		PARAMETERS: ctx - Discord Context, category - category of commands
+		DESCRIPTION: Show available commands
+		PARAMETERS: interaction - Discord interaction
 		"""
-		if category is None:
-			desc = "Available categories: music, game, mywatchlist. Use either !help music or !help game or !help mywatchlist"
-			await GeneralFunctions.send_embed("Which commands?", "dollar3.png", desc, ctx)
-		elif category.lower() == "music":
-			file_path = os.path.join("markdown", "musicCommands.md")
-			if os.path.isfile(file_path):
-				with open(file_path, "r", encoding="utf-8") as file:
-					bot_commands = file.read()
-			await GeneralFunctions.send_embed("Music Commands", "dollar3.png", bot_commands, ctx)
-		elif category.lower() == "game":
-			file_path = os.path.join("markdown", "gameCommands.md")
-			if os.path.isfile(file_path):
-				with open(file_path, "r", encoding="utf-8") as file:
-					game_commands = file.read()
-			await GeneralFunctions.send_embed("Game Commands", "dollar3.png", game_commands, ctx)
-		else:
-			await ctx.send("Invalid category. Available categories: music, game, mywatchlist")
+		logger.info(f"Creating Help View for user {interaction.user.name}")
+		await interaction.response.send_message("Which commands?", view=HelpView())
 
 	@commands.command()
 	@commands.is_owner()

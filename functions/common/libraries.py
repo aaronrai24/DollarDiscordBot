@@ -3,36 +3,35 @@
 DESCRIPTION: All file imports, global variables, auth tokens reside here
 Ok to ignore unused libraries
 """
-import discord
-import os
-import wavelink
-import logging
 import asyncio
+import discord
+import json
+import logging
 import logging.handlers
-import random
+import os
 import pandas
-import time
+import psycopg2
 import psutil
-import threading
-import traceback
-import sys
+import random
+import requests
 import signal
 import spotipy
-import requests
-import json
-import psycopg2
+import sys
+import threading
+import time
+import traceback
+import wavelink
 
 from bs4 import BeautifulSoup
+from collections import defaultdict
 from datetime import date
-from pandas import *
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from lyricsgenius import Genius
-from spotipy.oauth2 import SpotifyClientCredentials
-from collections import defaultdict
-from psycopg2 import pool
-from psycopg2 import ProgrammingError, IntegrityError, DatabaseError, Error
 from functools import wraps
+from lyricsgenius import Genius
+from pandas import *
+from psycopg2 import DatabaseError, Error, IntegrityError, ProgrammingError, pool
+from spotipy.oauth2 import SpotifyClientCredentials
 
 load_dotenv()
 
