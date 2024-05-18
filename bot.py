@@ -239,33 +239,36 @@ async def on_raw_reaction_add(payload):
 	DESCRIPTION: Scan for reactions to messages
 	PARAMETERS: payload - Discord Raw Reaction
 	"""
-	logger.debug(f"Reaction added: {payload}")
 	user_name = str(payload.member)
 	user_id = payload.user_id
 	reaction = payload.emoji.name
 	channel_id = payload.channel_id
 	message_id = payload.message_id
 	message = await client.get_channel(channel_id).fetch_message(message_id)
+	game_name = None
 	if message.embeds:
 		game_name = str(message.embeds[0].title)
+
 	#NOTE: Add subscription to game
 	if reaction == "🔔" and int(channel_id) == int(lib.PATCHES_CHANNEL):
-		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
+		logger.debug(f"{user_name} reacted with {reaction} to {game_name}")
 		game_result = queries.check_if_game_exists(game_name)
-		logger.info(f"Game result: {game_result}")
+
 		if game_result is None:
 			queries.add_game_to_db(game_name)
 		user_result = queries.check_if_user_exists(user_name)
-		logger.info(f"User result: {user_result}")
+
 		if user_result is None:
 			queries.add_user_to_db(user_id, user_name)
 		queries.add_game_subscription(user_name, game_name)
 		await payload.member.send(f"Subscribed to {game_name} notifications!")
+
 	#NOTE: Remove subscription to game
 	elif reaction == "🔕" and int(channel_id) == int(lib.PATCHES_CHANNEL):
 		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
 		game_result = queries.check_if_game_exists(game_name)
 		user_result = queries.check_if_user_exists(user_name)
+
 		if game_result and user_result:
 			queries.remove_game_subscription(user_name, game_name)
 			await payload.member.send(f"Unsubscribed from {game_name} notifications!")
@@ -342,6 +345,7 @@ async def on_voice_state_update(member, before, after):
 	text_channel = lib.guild_text_channels.get(str(guild))
 	channel = lib.discord.utils.get(guild.channels, name=voice_channel)
 	comchannel = lib.discord.utils.get(guild.channels, name=text_channel)
+	category = None
 	if channel is not None:
 		category = channel.category_id
 	if str(member) == "DollarTest#1851":
