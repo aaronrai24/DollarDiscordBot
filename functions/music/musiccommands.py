@@ -4,7 +4,7 @@ DESCRIPTION: Music commands reside here
 
 from ..common.libraries import(
 	discord, commands, genius, wavelink, os,
-	read_csv, random, asyncio, sp, artist
+	read_csv, random, sp, artist
 )
 
 from ..common.generalfunctions import GeneralFunctions
@@ -30,14 +30,12 @@ class Music(commands.Cog):
 	async def on_wavelink_track_end(self, payload: wavelink.TrackStartEventPayload) -> None:
 		player: wavelink.Player = payload.player
 		if not player.queue.is_empty:
-			await asyncio.sleep(.5)
 			next_track = player.queue.get()
 			await player.play(next_track)
 			logger.info(f"Playing next track: {next_track}")
 		else:
 			logger.info("Queue is empty")
 
-	# Join authors voice channel
 	@commands.command(aliases=["Join"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def join(self, ctx):
@@ -45,7 +43,6 @@ class Music(commands.Cog):
 		vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
 		await vc.set_volume(5)  # Set bot volume initially to 5
 
-	# Leave voice channel
 	@commands.command(aliases=["Leave"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def leave(self, ctx):
@@ -56,7 +53,6 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	# Play a song, ex: !play starboy the weeknd
 	@commands.command(aliases=["Play"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def play(self, ctx, *, query):
@@ -89,7 +85,6 @@ class Music(commands.Cog):
 			await vc.play(search)
 			logger.info(f"Playing from YouTube: {search.title}")
 
-	# Skip current song and play next, ex !playskip blinding lights the weeknd
 	@commands.command(aliases=["Playskip", "PlaySkip"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def playskip(self, ctx, *, query):
@@ -116,30 +111,26 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	# Skip current song, ex: !skip
 	@commands.command(aliases=["Skip"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def skip(self, ctx):
 		vc = ctx.voice_client
 		if vc:
 			if not vc.playing:
+				await ctx.message.add_reaction("\u274C")
 				msg = "Nothing is currently playing."
 				return await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 			if vc.queue.is_empty:
 				return await vc.stop()
 
-			await vc.seek(vc.current.length * 1000)
-			search = vc.queue.get()
-			vc.queue.put_at(0, search)
-			msg = f"Skipping to next song: {search}"
-			await GeneralFunctions.send_embed("Skipping Song", "dollarMusic.png", msg, ctx)
+			await vc.skip(force=False)
+			await ctx.message.add_reaction("\u2705")
 			logger.info("Skipping music")
 			if vc.paused:
 				await vc.pause(False)
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	# Replay current song, ex: !replay
 	@commands.command(aliases=["Replay"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def replay(self, ctx):
@@ -156,41 +147,22 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	# Pause current song, ex: !pause
-	@commands.command(aliases=["Pause"])
+	@commands.command(aliases=["Resume", "Pause", "resume", "pause"])
 	@GeneralFunctions.is_connected_to_same_voice()
-	async def pause(self, ctx):
-		vc = ctx.voice_client
-		if vc:
-			if vc.playing and not vc.paused:
-				await vc.pause(True)
-				msg = "Pausing Music Player!"
-				await GeneralFunctions.send_embed("Pausing...", "dollarMusic.png", msg, ctx)
-				logger.info("Pausing music")
-			else:
-				msg = "Nothing is currently playing"
-				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
-		else:
-			raise commands.CheckFailure("The bot is not connected to a voice channel.")
-
-	# Resume current song, ex: !resume
-	@commands.command(aliases=["Resume"])
-	@GeneralFunctions.is_connected_to_same_voice()
-	async def resume(self, ctx):
+	async def pause_resume(self, ctx):
 		vc = ctx.voice_client
 		if vc:
 			if vc.paused:
 				await vc.pause(False)
-				msg = "Resuming Music Player!"
-				await GeneralFunctions.send_embed("Resuming...", "dollarMusic.png", msg, ctx)
+				await ctx.message.add_reaction("\u25B6")
 				logger.info("Resuming music")
 			else:
-				msg = "Nothing is currently playing"
-				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
+				await vc.pause(True)
+				await ctx.message.add_reaction("\u23F8")
+				logger.info("Pausing music")
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	# Show current playing song, ex: !nowplaying
 	@commands.command(aliases=["Nowplaying", "NowPlaying", "np"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def nowplaying(self, ctx):
@@ -220,7 +192,6 @@ class Music(commands.Cog):
 			msg = "There are no songs currently playing, you can queue one by using !play or !playsc"
 			raise commands.CheckFailure(msg)
 
-	# Show whats next in the queue
 	@commands.command(aliases=["Next", "nextsong"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def next(self, ctx):
@@ -238,7 +209,6 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
-	# Seeks to specifc second in song, ex: !seek 50(seeks to 50 seconds)
 	@commands.command(aliases=["Seek"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def seek(self, ctx, seek=0):
@@ -247,16 +217,15 @@ class Music(commands.Cog):
 		if vc:
 			if vc.playing and not vc.paused:
 				await vc.seek(vc.current.length * val)
-				msg = f"Seeking {val} seconds."
-				await GeneralFunctions.send_embed("Seeking...", "dollarMusic.png", msg, ctx)
+				await ctx.message.add_reaction("\u2705")
 				logger.info(f"Song seeked for {val} seconds")
 			else:
+				await ctx.message.add_reaction("\u274C")
 				msg = "Nothing is currently playing"
 				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
-	# Set volume of bot, ex !volume 1(sets volume of bot to 1)
 	@commands.command(aliases=["Volume"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def volume(self, ctx, volume):
@@ -264,13 +233,11 @@ class Music(commands.Cog):
 		val = int(volume)
 		if vc and (0 < val <= 100):
 			await vc.set_volume(val)
-			msg = f"Volume set to: {val}"
-			await GeneralFunctions.send_embed("Setting Volume...", "dollarMusic.png", msg, ctx)
+			await ctx.message.add_reaction("\u2705")
 			logger.info(f"Bot volume set to: {val}")
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel")
 
-	# Prints all items in queue, ex !queue
 	@commands.command(aliases=["Queue"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def queue(self, ctx):
@@ -282,19 +249,13 @@ class Music(commands.Cog):
 			li = list(test)
 			for i in range(len(li)):
 				desc += (f"{i+1}. {li[i]}")
-				desc += "\n\n"
-
-			embed = discord.Embed(title="Whats Queued?", description=desc, colour=discord.Colour.random())
-			file_path = os.path.join("images", "dollar2.png")
-			img = discord.File(file_path, filename="dollar2.png")
-			embed.set_thumbnail(url="attachment://dollar2.png")
-			await ctx.send(embed=embed, file=img)
+				desc += "\n"
+			await GeneralFunctions.send_embed("Current Queue", "dollarMusic.png", desc, ctx)
 		else:
 			logger.info("Queue is already empty")
 			msg = "The queue is currently empty, add a song by using !play or !playsc"
 			await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
 
-	# Clears queue, !empty
 	@commands.command(aliases=["Empty", "clearqueue", "restart"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def empty(self, ctx):
@@ -302,14 +263,12 @@ class Music(commands.Cog):
 		if vc.queue.is_empty is False:
 			vc.queue.clear()
 			logger.info("Emptying queue")
-			msg = "All items from queue have been removed"
-			await GeneralFunctions.send_embed("Queue Cleared", "dollarMusic.png", msg, ctx)
+			await ctx.message.add_reaction("\u2705")
 		else:
 			logger.info("Queue is already empty")
 			msg = "The queue is currently empty, add a song by using !play or !playsc"
 			await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
 
-	# Load playlist from CSV, ex !load
 	@commands.command(aliases=["Load"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def load(self, ctx):
@@ -376,6 +335,7 @@ class Music(commands.Cog):
 
 		tracks = []
 		for track in results["tracks"]["items"]:
+			#pylint: disable=inconsistent-quotes
 			tracks.append(f"{track['name']} {track['artists'][0]['name']}")
 
 		if not tracks:
@@ -402,7 +362,6 @@ class Music(commands.Cog):
 			await Music.queue(self, ctx)
 			logger.info(f"Finished loading {count} songs into the queue from the Spotify generated playlist")
 
-	# Print lyrics of current playing song, pulls from Genius.com
 	@commands.command(aliases=["Lyrics"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def lyrics(self, ctx):
