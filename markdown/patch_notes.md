@@ -1,10 +1,7 @@
-Dollar 1.1.6 updates the built in Lavalink player and uses the youtube-source plugin to search for songs. This fixes this major [bug](https://github.com/aaronrai24/DollarDiscordBot/issues/101), where the bot would be able to search for songs but not play them. The bot now uses the youtube plugin to search for songs and play them. 
+Dollar 1.1.7 adds aliases to the `play` command, allowing users to play music by using the aliases `!p` and `!P`. This update also adds aliases to the skip command, allowing users to skip a song by using the aliases `!s` and `!S`. We also updated our Youtube Plugin to version 1.3.0.
 
 ## Fixes and Enhancements
 
-- Updated Lavalink to version 4.0.5
-- Added [youtube-source plugin](https://github.com/lavalink-devs/youtube-source#plugin) to search for songs
-- Fixed bug where the bot would not play songs
-
-### Known Issue
-- Currently Dollar's idle-timeout feature is not working as intended, this is due to an update with the wavelink library. We have disabled this feature and it is currently being worked on along with Dollar 2.0.
+- Added aliases to the `play` command
+- Added aliases to the `skip` command
+- Updated Youtube Plugin to version 1.3.0 to avoid status code 400 errors when searching for an empty query.
