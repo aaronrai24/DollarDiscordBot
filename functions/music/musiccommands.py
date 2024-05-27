@@ -57,7 +57,7 @@ class Music(commands.Cog):
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Play a song, ex: !play starboy the weeknd
-	@commands.command(aliases=["Play"])
+	@commands.command(aliases=["Play", "p", "P"])
 	@is_connected_to_voice()
 	async def play(self, ctx, *, query):
 		tracks: wavelink.Search = await wavelink.Playable.search(query)
@@ -117,7 +117,7 @@ class Music(commands.Cog):
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	# Skip current song, ex: !skip
-	@commands.command(aliases=["Skip"])
+	@commands.command(aliases=["Skip", "s", "S"])
 	@is_connected_to_same_voice()
 	async def skip(self, ctx):
 		vc = ctx.voice_client
