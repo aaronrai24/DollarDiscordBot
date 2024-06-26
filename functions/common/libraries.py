@@ -1,52 +1,54 @@
 """
-DESCRIPTION: All file imports, global variables, auth tokens reside here
-Ok to ignore unused libraries
+DESCRIPTION: All file imports, global variables, auth tokens reside here.
+Ok to ignore unused libraries.
 """
-#pylint: disable=unused-import
-#pylint: disable=redefined-builtin
-#pylint: disable=wildcard-import
-#pylint: disable=ungrouped-imports
-#pylint: disable=unused-wildcard-import
-import discord
-import os
-import wavelink
-import logging
+# pylint: disable=unused-import
+# pylint: disable=redefined-builtin
+# pylint: disable=wildcard-import
+# pylint: disable=ungrouped-imports
+# pylint: disable=unused-wildcard-import
+
 import asyncio
+import discord
+import json
+import logging
 import logging.handlers
-import random
+import mysql.connector
+import os
 import pandas
-import time
 import psutil
-import threading
-import traceback
-import sys
+import random
+import requests
 import signal
 import spotipy
-import requests
-import json
-import mysql.connector
+import sys
+import threading
+import time
+import traceback
+import wavelink
 
 from bs4 import BeautifulSoup
+from collections import defaultdict
 from datetime import date
-from pandas import *
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from lyricsgenius import Genius
-from spotipy.oauth2 import SpotifyClientCredentials
-from collections import defaultdict
 from mysql.connector import pooling
+from pandas import *
+from spotipy.oauth2 import SpotifyClientCredentials
 
+# Load environment variables
 load_dotenv()
 
 # Global Variables
 ADMIN = '⚡️'
 MOD = '🌩️'
-artist = '' #pylint: disable=invalid-name
+artist = ''  # pylint: disable=invalid-name
 created_channels = []
 START_TIME = time.time()
 user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
 
-# Auth Tokens for API's
+# Auth Tokens for APIs
 DISCORD_TOKEN = os.getenv('TOKEN')
 genius = Genius('GENIUSTOKEN')
 CLIENT_ID = os.getenv('CLIENT_ID')
