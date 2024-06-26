@@ -1,7 +1,6 @@
-Dollar 1.1.7 adds aliases to the `play` command, allowing users to play music by using the aliases `!p` and `!P`. This update also adds aliases to the skip command, allowing users to skip a song by using the aliases `!s` and `!S`. We also updated our Youtube Plugin to version 1.3.0.
+Dollar 1.1.8 cleans unneeded dependencies as well as adds updates our discord.py library to 2.4.0. We have also updated wavelink to 3.4.0 to improve stability and performance. 
 
 ## Fixes and Enhancements
-
-- Added aliases to the `play` command
-- Added aliases to the `skip` command
-- Updated Youtube Plugin to version 1.3.0 to avoid status code 400 errors when searching for an empty query.
+- Removed unneeded dependencies
+- Updated discord.py to 2.4.0, see [this link](https://discordpy.readthedocs.io/en/stable/whats_new.html#v2-4-0) for more information
+- Updated wavelink to 3.4.0, see [this link](https://github.com/PythonistaGuild/Wavelink/releases/tag/v3.4.0) for more information

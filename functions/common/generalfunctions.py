@@ -134,7 +134,7 @@ async def send_patch_notes(client):
 					desc = file.read()
 
 			embed = discord.Embed(
-				title="Patch: 1.1.6",
+				title="Patch: 1.1.8",
 				url="https://github.com/aaronrai24/DollarDiscordBot",
 				description=desc,
 				colour=discord.Color.green()
