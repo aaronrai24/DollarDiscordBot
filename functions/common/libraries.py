@@ -1,8 +1,9 @@
 # pylint: skip-file
 """
-DESCRIPTION: All file imports, global variables, auth tokens reside here
-Ok to ignore unused libraries
+DESCRIPTION: All file imports, global variables, auth tokens reside here.
+Ok to ignore unused libraries.
 """
+
 import asyncio
 import discord
 import json
@@ -33,6 +34,7 @@ from pandas import *
 from psycopg2 import DatabaseError, Error, IntegrityError, ProgrammingError, pool
 from spotipy.oauth2 import SpotifyClientCredentials
 
+# Load environment variables
 load_dotenv()
 
 # Global Variables
@@ -45,7 +47,7 @@ user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
 guild_text_channels = {}
 guild_voice_channels = {}
 
-# Auth Tokens for API's
+# Auth Tokens for APIs
 DISCORD_TOKEN = os.getenv('TOKEN')
 genius = Genius('GENIUSTOKEN')
 CLIENT_ID = os.getenv('CLIENT_ID')

@@ -27,7 +27,7 @@ docker build -t dollar .
 ```
 - Once the image is built, you can run the container using the following command:
 ```bash
-docker compose up
+docker compose up -d
 ```
 - This will run the bot, lavalink, and the database in separate containers. The bot will be connected to the database and lavalink automatically.
 - After making code changes, you can rebuild the image and restart the container using the following commands:
