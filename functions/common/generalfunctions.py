@@ -173,7 +173,7 @@ class GeneralFunctions():
 						desc = file.read()
 
 				embed = discord.Embed(
-					title="Patch: 2.0",
+					title="Patch: 2.0.0",
 					url="https://github.com/aaronrai24/DollarDiscordBot",
 					description=desc,
 					colour=discord.Color.green()

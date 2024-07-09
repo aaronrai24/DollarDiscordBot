@@ -1,31 +1,9 @@
-Long awaited update to Dollar! Dollar 2.0 includes a deeper integration with the Spotipy API, allowing users to search for playlists on Spotify. In addition, we have added new features that DM users with an ETA to work, the weather forecast, and NFL scores. 
+Dollar 1.1.9 updates Lavalink to 4.0.7 and Youtube-Source to 1.4.0 to keep up with the latest changes and bug fixes for both dependencies. Updating our dependencies ensures Dollar runs smoothly and efficiently, and we can take advantage of the latest features and improvements. Expect minor updates similar to this one as we continue to maintain and improve Dollar.
 
-## New Features
-
-### Patch Note Notifications
-- Added a new feature to get pinged for new patch notes for a game you are subscribed to.
-- Simply add a 🔔 emoji as a reaction to a game you want to be notified for and Dollar will create a thread on subsequent patch note updates and @you in the thread.
-- To unsubscribe, simple add a ❌ emoji as a reaction to the game you want to unsubscribe from.
-
-### Deeper Integration with Spotipy API
-- Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify. This command will play the first result found on Spotify.
-- Added a new command, `!lofi`, that plays lofi playlist on Spotify.
-
-### ETA to Work Notifications
-- Added a new feature that DMs users with an ETA to work based on their home address and work address. This feature is activated by setting the home and work addresses using the /setup command. The ETA is calculated using the Google Maps API.
-- DMs are sent at 6:30 AM every weekday morning. This feature is disabled on weekends.
-- Disclaimer: This feature stores home and work addresses in a database. The addresses are only used to calculate the ETA to work and are not used for any other purpose.
-
-### Weather Notifications
-- Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the /setup command. The weather forecast is calculated using the OpenWeatherMap API.
-- DMs are sent at 6:30 AM every morning. This feature is disabled on weekends.
-- Disclaimer: This feature stores home addresses in a database. The addresses are only used to calculate the weather forecast and are not used for any other purpose.
-
-### NFL Score Notifications
-- Added a new feature that posts scores to the `#sports` channel.
-- Scores are posted at 1:00 PM, 5:30 PM, and 9:30 PM every Sunday.
-
-
-### Bug Fixes and small enhancements
-- Added more debug loggers `[#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)` to help with debugging codebase
-- Addressed java.lang.RuntimeException `[#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)` by updating Java on Dollar's server
+## Fixes and Enhancements
+- Updated Lavalink to 4.0.7 which provides the following dependency updates:
+  - Updated Lavaplayer to 2.2.1
+  - Updated spring-boot to 3.3.0 & spring-websocket to 6.1.9
+  - Updated kotlin to 2.0.0 & kotlinx-serialization-json to 1.7.0
+  - Updated logback to 1.5.6 & sentry-logback to 7.10.0
+- Updated Youtube-Source plugin to 1.4.0 which fixes an issue with the n cipher regex that meant some new patterns weren't being detected. In addition, switched to a cookie-less HTTP interface manager to avoid storing cookies between requests.
