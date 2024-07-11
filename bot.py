@@ -4,6 +4,7 @@ All client events should be written here.
 """
 import functions.common.libraries as lib
 from functions.common.generalfunctions import GeneralFunctions
+from functions.common.autochannelcreation import AutoChannelCreation
 from functions.queries.queries import Queries
 from functions.notifications.push_notifications import PushNotifications
 
@@ -247,7 +248,7 @@ async def on_raw_reaction_add(payload):
 	message = await client.get_channel(channel_id).fetch_message(message_id)
 	game_name = None
 	if message.embeds:
-		game_name = str(message.embeds[0].title)
+		game_name = str(message.embeds[0].author.name)
 
 	#NOTE: Add subscription to game
 	if reaction == "🔔" and int(channel_id) == int(lib.PATCHES_CHANNEL):
@@ -296,26 +297,26 @@ async def on_message(message):
 
 	if str(message.channel.id) == str(lib.PATCHES_CHANNEL):
 		try:
-			embed_title = message.embeds[0].title
+			embed_title = str(message.embeds[0].author.name)
 			logger.info(f"Game update detected: {embed_title}, channel id: {message.channel.id}, message id: {message.id}")
 			await push_notifications.notify_game_update(embed_title, message)
 		except IndexError:
 			pass
 
-	if channel in (guild_text_channel, "test"):
+	if channel in (guild_text_channel, "dollar-dev", "commands"):
 		if msg.startswith("!"):
-			logger.info(f"Bot command entered. Command: {msg} | Author: {author}")
+			logger.info(f"Bot command entered. Command: {msg} | Author: {author} Guild: {guild}")
 			await client.process_commands(message)
 		elif str(message.attachments) == "[]":
 			await client.process_commands(message)
-			logger.info(f"User message entered. Message: {msg} | Author: {author}")
+			logger.info(f"User message entered. Message: {msg} | Author: {author} Guild: {guild}")
 		else:
 			if message.attachments and message.attachments[0].filename.endswith(".csv"):
 				try:
 					await message.attachments[0].save(fp="ex.csv")
 					lib.pandas.read_csv("ex.csv")
 					await message.channel.send("File downloaded. Use !load to load songs into queue.")
-					logger.info(f"CSV successfully downloaded, author: {author}")
+					logger.info(f"CSV successfully downloaded, author: {author} Guild: {guild}")
 				except lib.pandas.errors.ParserError:
 					logger.warning("File is not a valid CSV")
 					await message.channel.send("File is not a valid CSV.")
@@ -324,136 +325,57 @@ async def on_message(message):
 					await message.channel.send(f"Error occurred while downloading file: {e}")
 	elif msg.startswith("!clear"):
 		await client.process_commands(message)
-		logger.info(f"{author} used !clear")
+		logger.info(f"{author} used !clear in Guild: {guild}")
 	elif msg.startswith("!"):
-		logger.info(f"Command entered in wrong channel, deleting: {msg}")
+		logger.info(f"Command entered in wrong channel, deleting: {msg} in Guild: {guild}")
 		await message.delete(delay=1)
 
 @client.event
 async def on_voice_state_update(member, before, after):
 	"""
-	DESCRIPTION: Scan when users join/leave/move voice channels
+	DESCRIPTION: Handles voice state update
 	PARAMETERS: member - Discord Member
-				before - Discord Voice State
-				after - Discord Voice State
+				before - Discord VoiceState
+				after - Discord VoiceState
 	"""
-	ctxbefore = before.channel
-	ctxafter = after.channel
-	guild = client.get_guild(member.guild.id)
-	user = str(member.display_name)
-	voice_channel = lib.guild_voice_channels.get(str(guild))
-	text_channel = lib.guild_text_channels.get(str(guild))
-	channel = lib.discord.utils.get(guild.channels, name=voice_channel)
-	comchannel = lib.discord.utils.get(guild.channels, name=text_channel)
-	category = None
-	if channel is not None:
-		category = channel.category_id
-	if str(member) == "DollarTest#1851":
-		dollar = member.id
-	else:
-		dollar = 0
+	guild = member.guild
+	join_channel = AutoChannelCreation.get_join_channel(guild)
 	
-	#NOTE: If they join JOIN HERE💎, create a new channel
-	if ctxbefore is None and ctxafter is not None:
-		#NOTE Somebody joined a voice channel
-		logger.info(f"{member} joined {ctxafter}")
-		if str(ctxafter) == str(channel):
-			await channel.set_permissions(guild.default_role, connect=False)
-			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
-			category_channel = lib.discord.utils.get(guild.categories, id=category)
-			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=0)
-			await v_channel.set_permissions(member, manage_channels=True)
-			lib.created_channels.append(v_channel.id)
-			logger.info(f"Successfully created {v_channel} in {str(guild)}")
-			await member.move_to(v_channel)
-			while member.voice.channel != v_channel:
-				await lib.asyncio.sleep(1)
-			await channel.set_permissions(guild.default_role, connect=True)
-			logger.info(f"Unlocked {str(channel)}, channel creation finished in {str(guild)}")
-	elif ctxbefore is not None and ctxafter is None:
-		#NOTE: Somebody left a voice channel
-		logger.info(f"{member} left {ctxbefore}")
-		for channel_id in lib.created_channels:
-			if ctxbefore.id == channel_id:
-				v_channel = lib.discord.utils.get(guild.channels, id=ctxbefore.id)
-				if len(v_channel.members) == 0:
-					await v_channel.delete()
-					logger.info(f"{v_channel} empty, deleted channel in {str(guild)}")
-					# pylint: disable=modified-iterating-list
-					lib.created_channels.remove(ctxbefore.id)
-	elif str(ctxbefore) != str(ctxafter):
-		#NOTE: Somebody was already connected to a vc but moved to a different channel
-		logger.info(f"{member} moved from {ctxbefore} to {ctxafter}")
-
-		#NOTE: Prioritize removing empty channels
-		for channel_id in lib.created_channels:
-			if ctxbefore.id == channel_id:
-				v_channel = lib.discord.utils.get(guild.channels, id=ctxbefore.id)
-				if len(v_channel.members) == 0:
-					await v_channel.delete()
-					logger.info(f"{v_channel} empty, deleted channel in {str(guild)}")
-					# pylint: disable=modified-iterating-list
-					lib.created_channels.remove(ctxbefore.id)
-
-		#NOTE: If they move to JOIN HERE💎 go through channel creation
-		if str(ctxafter) == str(channel):
-			await channel.set_permissions(guild.default_role, connect=False)
-			logger.info(f"Locked {str(channel)}, beginning channel creation in {str(guild)}")
-			category_channel = lib.discord.utils.get(guild.categories, id=category)
-			v_channel = await guild.create_voice_channel(f"{user}'s Channel", category=category_channel, position=0)
-			await v_channel.set_permissions(member, manage_channels=True)
-			lib.created_channels.append(v_channel.id)
-			logger.info(f"Successfully created {v_channel} in {str(guild)}")
-			await member.move_to(v_channel)
-			while member.voice.channel != v_channel:
-				await lib.asyncio.sleep(1)
-			await channel.set_permissions(guild.default_role, connect=True)
-			logger.info(f"Unlocked {str(channel)}, channel creation finished in {str(guild)}")
-
-	#NOTE: Inactivity Checker, create a new thread to run idle_checker
-	# pylint: disable=unused-variable
-	vc_lock = lib.threading.Lock()
-	# pylint: disable=unused-variable
-	comchannel_lock = lib.threading.Lock()
-	
-	if member.id != dollar:
+	if not join_channel:
 		return
 
-	elif ctxbefore is None:
-		vc = after.channel.guild.voice_client
-		lib.asyncio.create_task(GeneralFunctions.idle_checker(vc, comchannel, guild))
+	if before.channel != after.channel:
+		logger.info(f"{member} joined {join_channel} in {guild}")
+		if after.channel == join_channel:
+			logger.info(f"{member} joined {join_channel} in {guild}, creating personal channel")
+			try:
+				logger.info("Checking for hanging channels...")
+				await AutoChannelCreation.handle_channel_leave(before.channel)
+			except AttributeError:
+				pass
+			finally:
+				await AutoChannelCreation.create_personal_channel(member, join_channel)
+			logger.info(f"Personal channel created for {member} in {guild}")
+		elif before.channel:
+			logger.info(f"{member} left {before.channel} in {guild}, removing personal channel")
+			await AutoChannelCreation.handle_channel_leave(before.channel)
+			logger.info(f"Personal channel removed for {member} in {guild}")
+
+	await AutoChannelCreation.manage_idle_task(member, guild, after.channel)
 
 @client.event
 async def on_command_error(ctx, error):
 	"""
-	DESCRIPTION: Error Handling
+	DESCRIPTION: Error handling for commands
 	PARAMETERS: ctx - Discord Context
-				error - Error
+				error - Exception
 	"""
-	if isinstance(error, lib.commands.MissingRole):
-		await GeneralFunctions.send_embed_error("Missing Required Role", error, ctx)
-		logger.error("User has insufficient role")
-	elif isinstance(error, lib.commands.CommandNotFound):
-		await GeneralFunctions.send_embed_error("Command Not Found", error, ctx)
-		logger.error("User tried to use a command that does not exist")
-	elif isinstance(error, lib.commands.BadArgument):
-		await GeneralFunctions.send_embed_error("Invalid argument", error, ctx)
-		logger.error("User provided an invalid argument")
-	elif isinstance(error, lib.commands.CheckFailure):
-		await GeneralFunctions.send_embed_error("Incorrect Command Usage", error, ctx)
-		logger.error("User used command incorrectly")
-	elif isinstance(error, lib.discord.errors.PrivilegedIntentsRequired):
-		await GeneralFunctions.send_embed_error("Missing Required Intent", error, ctx)
-		logger.error("Bot is missing required intent")
-	elif isinstance(error, lib.commands.CommandOnCooldown):
-		await GeneralFunctions.send_embed_error("Command Cooldown", error, ctx)
-		logger.warning(f"Command on cooldown for user {ctx.author}")
-	elif isinstance(error, lib.wavelink.LavalinkException):
-		await GeneralFunctions.send_embed_error("Lavalink Error", error, ctx)
-		logger.error("Lavalink error occurred")
-	elif isinstance(error, lib.wavelink.InvalidChannelStateException):
-		await GeneralFunctions.send_embed_error("Invalid Channel State", error, ctx)
-		logger.error("Invalid channel state")
+	error_type = type(error)
+	
+	if error_type in lib.ERROR_MAPPING:
+		title, log_message = lib.ERROR_MAPPING[error_type]
+		await GeneralFunctions.send_embed_error(title, str(error), ctx)
+		logger.error(log_message.format(ctx=ctx))
 	else:
 		msg = "An unexpected error occurred while processing your command. Please use /reportbug."
 		await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)

@@ -8,9 +8,6 @@ from functions.queries.queries import Queries
 
 logger = GeneralFunctions.setup_logger("settings")
 
-async def is_owner(ctx):
-	return ctx.author.id == ctx.guild.owner_id
-
 class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 	"""
 	DESCRIPTION: Creates Settings Modal
@@ -31,7 +28,7 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		"""
 		guild_id = interaction.guild_id
 		guild = interaction.guild
-		guild_owner = guild.owner
+		guild_owner = interaction.guild.owner
 		text_channel_value = self.text_channel.value.replace(" ", "-").lower()
 		voice_channel_value = self.voice_channel.value
 		shows_channel_value = self.shows_channel.value
@@ -43,6 +40,9 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
 		else:
 			logger.debug(f"Guild {guild_id} does not exist in database, adding text, voice, and shows channels")
+			user_exists = Queries.check_if_user_exists(self, str(guild_owner))
+			if user_exists is None:
+				Queries.add_user_to_db(self, guild.owner.id, guild.owner.name)
 			Queries.add_guild_to_db(self, str(guild), str(guild_owner))
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
 		
