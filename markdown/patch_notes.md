@@ -12,7 +12,6 @@ Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with t
 
 - Dollar is now containerized using Docker. This allows for easier deployment and scaling of the bot.
 - Included in the Docker container are images for the bot, the database, and lavalink.
-- Running in Docker will allow for easier deployment and scaling of the bot while maintaining a consistent environment and improving security.
 
 ### Patch Note Notifications
 
@@ -27,15 +26,13 @@ Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with t
 
 ### ETA to Work Notifications
 
-- Added a new feature that DMs users with an ETA to work based on their home address and work address. This feature is activated by setting the home and work addresses using the /setup command. The ETA is calculated using the Google Maps API.
+- Added a new feature that DMs users with an ETA to work based on their home address and work address. This feature is activated by setting the home and work addresses using the `/updateuserinfo` command. The ETA is calculated using the Google Maps API.
 - DMs are sent at 6:30 AM every weekday morning. This feature is disabled on weekends.
-- Disclaimer: This feature stores home and work addresses in a database. The addresses are only used to calculate the ETA to work and are not used for any other purpose.
 
 ### Weather Notifications
 
-- Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the /setup command. The weather forecast is calculated using the OpenWeatherMap API.
+- Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the `/updateuserinfo` command. The weather forecast is calculated using the OpenWeatherMap API.
 - DMs are sent at 6:30 AM every morning. This feature is disabled on weekends.
-- Disclaimer: This feature stores home addresses in a database. The addresses are only used to calculate the weather forecast and are not used for any other purpose.
 
 ### NFL Score Notifications
 
@@ -50,13 +47,15 @@ Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with t
 
 ### Fixes and Enhancements
 
-- Added more debug loggers `[#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)` to help with debugging codebase
+- Added more debug loggers ([#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)) to help with debugging codebase
 - Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
-- Addressed java.lang.RuntimeException `[#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)` by updating Java on Dollar's server
-- Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes.
+- Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by updating Java on Dollar's server
+- Addressed orphaned channels created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)) by adding a check to see if the user joined the voice channel after the bot created it.
+- Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes([#85](https://github.com/aaronrai24/DollarDiscordBot/issues/85)).
+- Manged dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
 
 
-#### Deprecated Features
+### Deprecated Features
 
 - Removed all MyWatchList commands and features as the methods were outdated and no longer functional.

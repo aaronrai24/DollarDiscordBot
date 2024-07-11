@@ -1,5 +1,5 @@
 """
-DESCRIPTION: Creates Auto Channel Creation Class
+DESCRIPTION: Functions for Auto Channel Creation resides here
 """
 import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
@@ -50,7 +50,13 @@ class AutoChannelCreation():
 			await member.move_to(new_channel)
 			await lib.asyncio.sleep(1)  # Short delay to ensure move completes
 
-		logger.info(f"Created channel {new_channel.name} for {member.display_name} in {guild.name}")
+			logger.info(f"Created channel {new_channel.name} for {member.display_name} in {guild.name}")
+
+			#NOTE: Check if member joined the channel if not delete the channel
+			if not member.voice or member.voice.channel != new_channel:
+				await new_channel.delete()
+				logger.warning(f"User did not join voice channle, deleted orphaned channel {new_channel.name} in {guild.name}")
+				return
 
 	async def handle_channel_leave(channel):
 		"""
