@@ -20,6 +20,33 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 	text_channel = lib.discord.ui.TextInput(label="Text Channel", placeholder="Enter Preferred Text Channel Name", required=True)
 	voice_channel = lib.discord.ui.TextInput(label="Voice Channel", placeholder="Enter Preferred Voice Channel Name", required=True)
 	shows_channel = lib.discord.ui.TextInput(label="Shows Channel", placeholder="Enter Preferred Shows Channel Name", required=True)
+
+	async def create_channels(self, guild, text_channel_value, voice_channel_value, shows_channel_value):
+		"""
+		DESCRIPTION: Creates text, voice, and shows channels if they do not already exist
+		PARAMETERS: discord.Guild - Discord Guild, str - Text Channel Name, str - Voice Channel Name, str - Shows Channel Name
+		"""
+		logger.debug(f"Checking for existing channels and creating text, voice, and shows channels for guild {guild}")
+
+		existing_channels = {channel.name: channel for channel in guild.channels}
+		
+		if text_channel_value not in existing_channels:
+			await guild.create_text_channel(text_channel_value)
+			logger.debug(f"Text channel '{text_channel_value}' created for guild {guild}")
+		else:
+			logger.warning(f"Text channel '{text_channel_value}' already exists in guild {guild}")
+		
+		if voice_channel_value not in existing_channels:
+			await guild.create_voice_channel(voice_channel_value)
+			logger.debug(f"Voice channel '{voice_channel_value}' created for guild {guild}")
+		else:
+			logger.warning(f"Voice channel '{voice_channel_value}' already exists in guild {guild}")
+		
+		if shows_channel_value not in existing_channels:
+			await guild.create_voice_channel(shows_channel_value)
+			logger.debug(f"Shows channel '{shows_channel_value}' created for guild {guild}")
+		else:
+			logger.warning(f"Shows channel '{shows_channel_value}' already exists in guild {guild}")
 	
 	async def on_submit(self, interaction: lib.discord.Interaction):
 		"""
@@ -40,8 +67,8 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
 		else:
 			logger.debug(f"Guild {guild_id} does not exist in database, adding text, voice, and shows channels")
-			user_exists = Queries.check_if_user_exists(self, str(guild_owner))
-			if user_exists is None:
+			owner_exists = Queries.check_if_user_exists(self, str(guild_owner))
+			if owner_exists is None:
 				Queries.add_user_to_db(self, guild.owner.id, guild.owner.name)
 			Queries.add_guild_to_db(self, str(guild), str(guild_owner))
 			Queries.add_guild_preferences(self, text_channel_value, voice_channel_value, shows_channel_value, str(guild))
@@ -49,16 +76,12 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		#NOTE: Update text, voice channel caches
 		lib.guild_text_channels[str(guild)] = text_channel_value
 		lib.guild_voice_channels[str(guild)] = voice_channel_value
-		logger.info(f"Text and voice channel caches updated for guild {guild_id}")
+		logger.debug(f"Text and voice channel caches updated for guild {guild_id}")
 
-		logger.info(f"Settings saved for guild {guild_id}")
 		await interaction.response.send_message("Settings Saved! Creating your channels", ephemeral=True)
 
-		logger.debug(f"Creating Text, voice, and shows channels for guild {guild}")
-		await guild.create_text_channel(text_channel_value)
-		await guild.create_voice_channel(voice_channel_value)
-		await guild.create_voice_channel(shows_channel_value)
-		logger.debug(f"Text, voice, and shows channels created for guild {guild}")
+		await self.create_channels(guild, text_channel_value, voice_channel_value, shows_channel_value)
+		logger.info(f"Dollar Settings saved for guild {guild_id}")
 
 	async def on_error(self, interaction: lib.discord.Interaction, error: Exception) -> None:
 		"""

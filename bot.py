@@ -347,7 +347,6 @@ async def on_voice_state_update(member, before, after):
 	if before.channel != after.channel:
 		logger.info(f"{member} joined {join_channel} in {guild}")
 		if after.channel == join_channel:
-			logger.info(f"{member} joined {join_channel} in {guild}, creating personal channel")
 			try:
 				logger.info("Checking for hanging channels...")
 				await AutoChannelCreation.handle_channel_leave(before.channel)
@@ -355,11 +354,9 @@ async def on_voice_state_update(member, before, after):
 				pass
 			finally:
 				await AutoChannelCreation.create_personal_channel(member, join_channel)
-			logger.info(f"Personal channel created for {member} in {guild}")
 		elif before.channel:
-			logger.info(f"{member} left {before.channel} in {guild}, removing personal channel")
+			logger.info(f"{member} left {before.channel} in {guild}")
 			await AutoChannelCreation.handle_channel_leave(before.channel)
-			logger.info(f"Personal channel removed for {member} in {guild}")
 
 	await AutoChannelCreation.manage_idle_task(member, guild, after.channel)
 
