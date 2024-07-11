@@ -247,7 +247,7 @@ async def on_raw_reaction_add(payload):
 	message = await client.get_channel(channel_id).fetch_message(message_id)
 	game_name = None
 	if message.embeds:
-		game_name = str(message.embeds[0].title)
+		game_name = str(message.embeds[0].author.name)
 
 	#NOTE: Add subscription to game
 	if reaction == "🔔" and int(channel_id) == int(lib.PATCHES_CHANNEL):
@@ -296,13 +296,13 @@ async def on_message(message):
 
 	if str(message.channel.id) == str(lib.PATCHES_CHANNEL):
 		try:
-			embed_title = message.embeds[0].title
+			embed_title = str(message.embeds[0].author.name)
 			logger.info(f"Game update detected: {embed_title}, channel id: {message.channel.id}, message id: {message.id}")
 			await push_notifications.notify_game_update(embed_title, message)
 		except IndexError:
 			pass
 
-	if channel in (guild_text_channel, "test"):
+	if channel in (guild_text_channel, "dollar-dev"):
 		if msg.startswith("!"):
 			logger.info(f"Bot command entered. Command: {msg} | Author: {author}")
 			await client.process_commands(message)
@@ -425,38 +425,20 @@ async def on_voice_state_update(member, before, after):
 
 @client.event
 async def on_command_error(ctx, error):
-	"""
-	DESCRIPTION: Error Handling
+    """
+	DESCRIPTION: Error handling for commands
 	PARAMETERS: ctx - Discord Context
-				error - Error
-	"""
-	if isinstance(error, lib.commands.MissingRole):
-		await GeneralFunctions.send_embed_error("Missing Required Role", error, ctx)
-		logger.error("User has insufficient role")
-	elif isinstance(error, lib.commands.CommandNotFound):
-		await GeneralFunctions.send_embed_error("Command Not Found", error, ctx)
-		logger.error("User tried to use a command that does not exist")
-	elif isinstance(error, lib.commands.BadArgument):
-		await GeneralFunctions.send_embed_error("Invalid argument", error, ctx)
-		logger.error("User provided an invalid argument")
-	elif isinstance(error, lib.commands.CheckFailure):
-		await GeneralFunctions.send_embed_error("Incorrect Command Usage", error, ctx)
-		logger.error("User used command incorrectly")
-	elif isinstance(error, lib.discord.errors.PrivilegedIntentsRequired):
-		await GeneralFunctions.send_embed_error("Missing Required Intent", error, ctx)
-		logger.error("Bot is missing required intent")
-	elif isinstance(error, lib.commands.CommandOnCooldown):
-		await GeneralFunctions.send_embed_error("Command Cooldown", error, ctx)
-		logger.warning(f"Command on cooldown for user {ctx.author}")
-	elif isinstance(error, lib.wavelink.LavalinkException):
-		await GeneralFunctions.send_embed_error("Lavalink Error", error, ctx)
-		logger.error("Lavalink error occurred")
-	elif isinstance(error, lib.wavelink.InvalidChannelStateException):
-		await GeneralFunctions.send_embed_error("Invalid Channel State", error, ctx)
-		logger.error("Invalid channel state")
-	else:
-		msg = "An unexpected error occurred while processing your command. Please use /reportbug."
-		await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)
-		logger.exception("Unexpected error occurred", exc_info=error)
+				error - Exception
+    """
+    error_type = type(error)
+    
+    if error_type in lib.ERROR_MAPPING:
+        title, log_message = lib.ERROR_MAPPING[error_type]
+        await GeneralFunctions.send_embed_error(title, str(error), ctx)
+        logger.error(log_message.format(ctx=ctx))
+    else:
+        msg = "An unexpected error occurred while processing your command. Please use /reportbug."
+        await GeneralFunctions.send_embed_error("Unexpected Error", msg, ctx)
+        logger.exception("Unexpected error occurred", exc_info=error)
 
 client.run(DISCORD_TOKEN)
