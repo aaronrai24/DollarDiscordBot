@@ -9,6 +9,7 @@ from ..common.libraries import(
 
 from ..common.generalfunctions import GeneralFunctions
 from ..common.generalfunctions import CustomPlayer
+from functions.queries.queries import Queries
 
 logger = GeneralFunctions.setup_logger("music")
 
@@ -19,6 +20,7 @@ class Music(commands.Cog):
 	"""
 	def __init__(self, bot):
 		self.bot = bot
+		self.mydb = bot.mydb
 
 	@commands.Cog.listener()
 	async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
@@ -35,13 +37,26 @@ class Music(commands.Cog):
 			logger.info(f"Playing next track: {next_track}")
 		else:
 			logger.info("Queue is empty")
+	
+	@commands.Cog.listener()
+	async def on_wavelink_inactive_player(self, player: wavelink.Player) -> None:
+		logger.info(f"10 minutes reached, Dollar disconnecting from {str(player.guild)}")
+		msg = f"10 minutes reached, Dollar disconnecting from {str(player.guild)}"
+		guilds_text_channel = Queries.get_guilds_preferred_text_channel(self, player.guild.name)
+		if guilds_text_channel:
+			channel = discord.utils.get(player.guild.channels, name=guilds_text_channel)
+		else:
+			channel = discord.utils.get(player.guild.channels, name="commands")
+		await channel.purge(limit=500)
+		await GeneralFunctions.send_embed("Inactivity", "dollar4.png", msg, channel)
+		await player.disconnect()
 
 	@commands.command(aliases=["Join"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def join(self, ctx):
 		custom_player = CustomPlayer()
 		vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
-		await vc.set_volume(5)  # Set bot volume initially to 5
+		await vc.set_volume(5)  #NOTE: Set bot volume initially to 5
 
 	@commands.command(aliases=["Leave"])
 	@GeneralFunctions.is_connected_to_same_voice()
@@ -53,7 +68,7 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	@commands.command(aliases=["Play"])
+	@commands.command(aliases=["Play", "p", "P"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def play(self, ctx, *, query):
 		tracks: wavelink.Search = await wavelink.Playable.search(query)
@@ -111,7 +126,7 @@ class Music(commands.Cog):
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
-	@commands.command(aliases=["Skip"])
+	@commands.command(aliases=["Skip", "s", "S"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def skip(self, ctx):
 		vc = ctx.voice_client
@@ -121,10 +136,11 @@ class Music(commands.Cog):
 				msg = "Nothing is currently playing."
 				return await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 			if vc.queue.is_empty:
+				await ctx.message.add_reaction("\u2705")
 				return await vc.stop()
 
-			await vc.skip(force=False)
 			await ctx.message.add_reaction("\u2705")
+			await vc.skip(force=False)
 			logger.info("Skipping music")
 			if vc.paused:
 				await vc.pause(False)
@@ -138,10 +154,10 @@ class Music(commands.Cog):
 		if vc:
 			if vc.playing:
 				await vc.seek(0)
-				msg = "Replaying current song!"
-				await GeneralFunctions.send_embed("Replaying...", "dollarMusic.png", msg, ctx)
+				await ctx.message.add_reaction("\u2705")
 				logger.info("Replaying music")
 			else:
+				await ctx.message.add_reaction("\u274C")
 				msg = "Nothing is currently playing"
 				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 		else:

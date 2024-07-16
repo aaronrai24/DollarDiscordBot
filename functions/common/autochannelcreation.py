@@ -1,6 +1,7 @@
 """
 DESCRIPTION: Functions for Auto Channel Creation resides here
 """
+#pylint: disable=not-async-context-manager
 import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
 
@@ -68,25 +69,6 @@ class AutoChannelCreation():
 			await channel.delete()
 			lib.created_channels.remove(channel.id)
 			logger.info(f"Deleted empty channel {channel.name} in {channel.guild.name}")
-
-	async def manage_idle_task(member, guild, channel):
-		"""
-		DESCRIPTION: Manages idle task for Dollar
-		PARAMETERS: member - discord.Member
-					guild - discord.Guild
-					channel - discord.VoiceChannel
-		RETURNS: None
-		"""
-		if str(member) == lib.DOLLAR_BOT_ID:
-			if channel is None and guild.id in lib.idle_tasks:
-				lib.idle_tasks[guild.id].cancel()
-				del lib.idle_tasks[guild.id]
-				logger.info(f"Cancelled idle task for Dollar in {guild.name}")
-			elif channel is not None and guild.id not in lib.idle_tasks:
-				lib.idle_tasks[guild.id] = lib.asyncio.create_task(
-					GeneralFunctions.idle_checker(channel.guild.voice_client, guild)
-				)
-				logger.info(f"Created idle task for Dollar in {guild.name}")
 
 	def get_join_channel(guild):
 		"""

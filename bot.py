@@ -69,7 +69,8 @@ async def connect_nodes():
 	"""
 	await client.wait_until_ready()
 	#NOTE: Connect to Wavelink
-	nodes = [lib.wavelink.Node(uri="http://lavalink:2333", password=LAVALINK_TOKEN, identifier="MAIN", retries=None, heartbeat=60)]
+	nodes = [lib.wavelink.Node(uri="http://lavalink:2333", password=LAVALINK_TOKEN, identifier="MAIN", 
+							retries=None, heartbeat=60, inactive_player_timeout=600)]
 	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
 	logger.info(f"Node: <{nodes}> is ready")
 	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
@@ -130,7 +131,7 @@ async def on_scheduled_event_update(before, after):
 	channel = after.channel
 
 	if start == "EventStatus.scheduled" and current == "EventStatus.active":
-		#Event has started
+		#NOTE: Event has started
 		logger.info(f"Event [{after.name}] in {after.guild} has started")
 		mentioned_users = []
 		async for user in users:
@@ -142,7 +143,7 @@ async def on_scheduled_event_update(before, after):
 						   {mention_string}, you can now join the voice channel.''')
 		await channel.set_permissions(channel.guild.default_role, connect=False)
 	elif start == "EventStatus.active" and current == "EventStatus.completed":
-		#Event has completed
+		#NOTE: Event has completed
 		logger.info(f"Event [{after.name}] in {after.guild} has completed")
 		await channel.edit(sync_permissions=True)
 		await channel.set_permissions(channel.guild.default_role, connect=True)
@@ -343,12 +344,16 @@ async def on_voice_state_update(member, before, after):
 	
 	if not join_channel:
 		return
+	
+	if before.channel is None and after.channel:
+		#NOTE: User joined channel
+		logger.info(f"{member} joined {after.channel} in {guild}")
 
 	if before.channel != after.channel:
-		logger.info(f"{member} joined {join_channel} in {guild}")
+		#NOTE: User moved channels
 		if after.channel == join_channel:
 			try:
-				logger.info("Checking for hanging channels...")
+				logger.debug("Checking for hanging channels...")
 				await AutoChannelCreation.handle_channel_leave(before.channel)
 			except AttributeError:
 				pass
@@ -357,8 +362,6 @@ async def on_voice_state_update(member, before, after):
 		elif before.channel:
 			logger.info(f"{member} left {before.channel} in {guild}")
 			await AutoChannelCreation.handle_channel_leave(before.channel)
-
-	await AutoChannelCreation.manage_idle_task(member, guild, after.channel)
 
 @client.event
 async def on_command_error(ctx, error):

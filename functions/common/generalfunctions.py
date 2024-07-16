@@ -4,8 +4,8 @@ All general functions should be written here.
 """
 
 from ..common.libraries import(
-	discord, logging, commands, wavelink, os, asyncio,
-	pool, requests, BeautifulSoup
+	discord, logging, commands, wavelink, os, pool, 
+	requests, BeautifulSoup
 )
 
 class CustomPlayer(wavelink.Player):
@@ -200,39 +200,6 @@ class GeneralFunctions():
 				for channel in guild.text_channels:
 					if channel.name == "commands":
 						await send_patch_note_embed(channel, guild)
-
-	async def idle_checker(vc, comchannel, guild):
-		"""
-		Check for inactivity in the voice channel and disconnect the bot if idle for 10 minutes.
-
-		Parameters:
-		- vc: discord.VoiceClient
-			The voice client representing the bot's connection to a voice channel.
-		- comchannel: discord.TextChannel
-			The text channel where the bot commands are typically sent.
-		- guild: discord.Guild
-			The guild (server) associated with the voice channel.
-
-		Returns:
-		- None
-		"""
-		time = 0
-		while True:
-			await asyncio.sleep(1)
-			time = time + 1
-			if time % 30 == 0:
-				logger.debug(f"Dollar has been idle for {time} seconds in {str(guild)}")
-			if vc.playing and not vc.paused:
-				time = 0
-			if time == 600:
-				logger.info(f"10 minutes reached, Dollar disconnecting from {str(guild)}")
-				await vc.disconnect()
-				await comchannel.purge(limit=500)
-				logger.debug("Finished clearing #commands channel")
-				msg = f"10 minutes reached, Dollar disconnecting from {str(guild)}"
-				await GeneralFunctions.send_embed("Inactivity", "dollar4.png", msg, comchannel)
-			if not vc.connected:
-				break
 
 	async def send_embed(title, image, msg, channel, footer=False):
 		"""
