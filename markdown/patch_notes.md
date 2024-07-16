@@ -1,4 +1,4 @@
-Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with the Spotipy API, allowing users to search for playlists on Spotify. In addition, we have added new features that DM users with an ETA to work, the weather forecast, and NFL scores while migrating to a containerized environment and leveraging CI/CD tools from GitHub. 
+Long awaited update to Dollar! Here is each new feature broken down, followed by a list of fixes and enhancements. 
 
 ## New Features
 
@@ -34,11 +34,6 @@ Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with t
 - Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the `/updateuserinfo` command. The weather forecast is calculated using the OpenWeatherMap API.
 - DMs are sent at 6:30 AM every morning. This feature is disabled on weekends.
 
-### NFL Score Notifications
-
-- Added a new feature that posts scores to the `#sports` channel.
-- Scores are posted at 1:00 PM, 5:30 PM, and 9:30 PM every Sunday.
-
 ### Embed Creator
 
 - Added a new feature that allows users to create custom embeds using the `!embed` command.
@@ -49,9 +44,11 @@ Long awaited update to Dollar! Dollar 2.0.0 includes a deeper integration with t
 
 - Added more debug loggers ([#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)) to help with debugging codebase
 - Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
+- Added message reactions to reduce spam in the preferred text channel/commands channel
 - Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by updating Java on Dollar's server
-- Addressed orphaned channels created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)) by adding a check to see if the user joined the voice channel after the bot created it.
+- Addressed orphaned channels created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).
 - Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes([#85](https://github.com/aaronrai24/DollarDiscordBot/issues/85)).
+- Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
 - Manged dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
 
