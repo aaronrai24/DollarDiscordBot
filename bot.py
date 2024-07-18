@@ -290,12 +290,14 @@ async def on_message(message):
 	guild = message.guild
 	guild_text_channel = lib.guild_text_channels.get(str(guild))
 
+	#NOTE: DMs to Dollar
 	if isinstance(message.channel, lib.discord.channel.DMChannel) and message.author != client.user:
 		logger.info(f"{author} sent a DM to Dollar")
 		msg = '''Checkout this readme:
 		(https://github.com/aaronrai24/DollarDiscordBot/blob/main/README.md)'''
 		await GeneralFunctions.send_embed("Welcome to Dollar", "dollar.png", msg, message.author)
 
+	#NOTE: Game update notifications in #patches in mfDiscord 
 	if str(message.channel.id) == str(lib.PATCHES_CHANNEL):
 		try:
 			embed_title = str(message.embeds[0].author.name)
@@ -304,31 +306,17 @@ async def on_message(message):
 		except IndexError:
 			pass
 
+	#NOTE: Bot commands
 	if channel in (guild_text_channel, "dollar-dev", "commands"):
 		if msg.startswith("!"):
 			logger.info(f"Bot command entered. Command: {msg} | Author: {author} Guild: {guild}")
 			await client.process_commands(message)
-		elif str(message.attachments) == "[]":
-			await client.process_commands(message)
-			logger.info(f"User message entered. Message: {msg} | Author: {author} Guild: {guild}")
-		else:
-			if message.attachments and message.attachments[0].filename.endswith(".csv"):
-				try:
-					await message.attachments[0].save(fp="ex.csv")
-					lib.pandas.read_csv("ex.csv")
-					await message.channel.send("File downloaded. Use !load to load songs into queue.")
-					logger.info(f"CSV successfully downloaded, author: {author} Guild: {guild}")
-				except lib.pandas.errors.ParserError:
-					logger.warning("File is not a valid CSV")
-					await message.channel.send("File is not a valid CSV.")
-				except Exception as e:
-					logger.error(f"Error occurred while downloading file: {e}")
-					await message.channel.send(f"Error occurred while downloading file: {e}")
 	elif msg.startswith("!clear"):
 		await client.process_commands(message)
 		logger.info(f"{author} used !clear in Guild: {guild}")
 	elif msg.startswith("!"):
 		logger.info(f"Command entered in wrong channel, deleting: {msg} in Guild: {guild}")
+		await author.send(f"Please use the {guild_text_channel} channel to enter commands in {guild}, thanks!")
 		await message.delete(delay=1)
 
 @client.event

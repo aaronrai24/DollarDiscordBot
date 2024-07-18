@@ -1,6 +1,6 @@
-- `/help` - Displays a view with buttons to navigate to specific help topics.
 - `/dollarsettings` - Displays a Modal to set Guilds preferred channels to manage commands(text), auto-channel creation(voice), and show/movie voice channel
-- `/updateuserinfo` - Update your user information, like home address, and work address to weather/eta to work push notifications.
 - `/featurerequest` - Submit a feature request to the developers.
+- `/help` - Displays a view with buttons to navigate to specific help topics.
 - `/reportbug` - Report a bug to the developers.
 - `/status` - Displays the current status of the server, including CPU, Memory, and uptime.
+- `/updateuserinfo` - Update your user information, like home address, and work address to weather/eta to work push notifications.

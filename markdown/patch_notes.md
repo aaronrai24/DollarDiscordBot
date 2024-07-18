@@ -46,12 +46,12 @@ Long awaited update to Dollar! Here is each new feature broken down, followed by
 - Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
 - Added message reactions to reduce spam in the preferred text channel/commands channel
 - Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by updating Java on Dollar's server
-- Addressed orphaned channels created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).
 - Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes([#85](https://github.com/aaronrai24/DollarDiscordBot/issues/85)).
 - Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
+- Fixed an issue where orphaned channels were getting created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).
+- Fixed an issue where `!nowplaying` would not display the correct song playing
 - Manged dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
-
 
 ### Deprecated Features
 
