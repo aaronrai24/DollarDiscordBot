@@ -3,8 +3,8 @@ DESCRIPTION: Music commands reside here
 """
 
 from ..common.libraries import(
-	discord, commands, genius, wavelink, os,
-	read_csv, random, sp, artist
+	discord, commands, genius, wavelink, random,
+	sp, artist
 )
 
 from ..common.generalfunctions import GeneralFunctions
@@ -22,6 +22,8 @@ class Music(commands.Cog):
 		self.bot = bot
 		self.mydb = bot.mydb
 
+#------------------------------------------------------------------------------------------------
+# Listeners
 	@commands.Cog.listener()
 	async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
 		track: wavelink.Playable = payload.track
@@ -51,6 +53,60 @@ class Music(commands.Cog):
 		await GeneralFunctions.send_embed("Inactivity", "dollar4.png", msg, channel)
 		await player.disconnect()
 
+#------------------------------------------------------------------------------------------------
+# Helper Functions
+	async def ensure_voice_connection(self, ctx):
+		"""
+		DESCRIPTION: Ensures the bot is connected to a voice channel
+		PARAMETERS: ctx - Discord Context
+		RETURNS: vc - Voice Client
+		"""
+		vc = ctx.voice_client
+		if not vc:
+			custom_player = CustomPlayer()
+			vc = await ctx.author.voice.channel.connect(cls=custom_player)
+			await vc.set_volume(5)
+		return vc
+
+	async def create_embed(self, search, description):
+		"""
+		DESCRIPTION: Creates an embed for the song
+		PARAMETERS: search - Search object, description - Description of the song
+		RETURNS: embed - Discord Embed
+		"""
+		embed = discord.Embed(title=search.title, url=search.uri, description=description, color=discord.Color.random())
+		embed.set_author(name=search.author)
+		embed.set_thumbnail(url=search.artwork)
+		return embed
+
+	async def add_to_queue(self, vc, search):
+		"""
+		DESCRIPTION: Adds a song to the queue
+		PARAMETERS: vc - Voice Client, search - Search object
+		RETURNS: embed - Discord Embed
+		"""
+		vc.queue.put(search)
+		embed = await self.create_embed(search, f"Added {search.title} to the Queue!")
+		if vc.queue.is_empty:
+			embed.set_footer(text="Queue is empty")
+		else:
+			nextitem = vc.queue.get()
+			vc.queue.put_at(0, nextitem)
+			embed.set_footer(text=f"Next song is: {nextitem}")
+		return embed
+
+	async def play_track(self, vc, search):
+		"""
+		DESCRIPTION: Plays a song
+		PARAMETERS: vc - Voice Client, search - Search object
+		RETURNS: embed - Discord Embed
+		"""
+		embed = await self.create_embed(search, f"Now Playing {search.title}!")
+		await vc.play(search)
+		return embed
+
+#------------------------------------------------------------------------------------------------
+# Commands
 	@commands.command(aliases=["Join"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def join(self, ctx):
@@ -58,7 +114,7 @@ class Music(commands.Cog):
 		vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
 		await vc.set_volume(5)  #NOTE: Set bot volume initially to 5
 
-	@commands.command(aliases=["Leave"])
+	@commands.command(aliases=["Leave", "Stop", "stop"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def leave(self, ctx):
 		vc = ctx.voice_client
@@ -71,50 +127,31 @@ class Music(commands.Cog):
 	@commands.command(aliases=["Play", "p", "P"])
 	@GeneralFunctions.is_connected_to_voice()
 	async def play(self, ctx, *, query):
-		tracks: wavelink.Search = await wavelink.Playable.search(query)
-		search: wavelink.Playable = tracks[0]
-		vc = ctx.voice_client
-		if not vc:
-			custom_player = CustomPlayer()
-			vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=custom_player)
-			await vc.set_volume(5)
+		tracks = await wavelink.Playable.search(query)
+		search = tracks[0]
+		vc = await self.ensure_voice_connection(ctx)
 
 		if vc.playing:
-			vc.queue.put(search)
-			embed = discord.Embed(title=search.title, url=search.uri, description=f"Added {search.title} to the Queue!", colour=discord.Colour.random())
-			embed.set_author(name=f"{search.author}")
-			embed.set_thumbnail(url=f"{search.artwork}")
-			if vc.queue.is_empty:
-				embed.set_footer(text="Queue is empty")
-			else:
-				nextitem = vc.queue.get()
-				vc.queue.put_at(0, nextitem)
-				embed.set_footer(text=f"Next song is: {nextitem}")
-			await ctx.send(embed=embed)
+			embed = await self.add_to_queue(vc, search)
 			logger.info(f"Queued from YouTube: {search.title}")
 		else:
-			embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
-			embed.set_author(name=f"{search.author}")
-			embed.set_thumbnail(url=f"{search.artwork}")
-			await ctx.send(embed=embed)
-			await vc.play(search)
+			embed = await self.play_track(vc, search)
 			logger.info(f"Playing from YouTube: {search.title}")
+
+		await ctx.send(embed=embed)
 
 	@commands.command(aliases=["Playskip", "PlaySkip"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def playskip(self, ctx, *, query):
-		tracks: wavelink.Search = await wavelink.Playable.search(query)
-		search: wavelink.Playable = tracks[0]
+		tracks = await wavelink.Playable.search(query)
+		search = tracks[0]
 		vc = ctx.voice_client
-		
+
 		if vc:
 			if vc.playing and not vc.paused:
 				vc.queue.put_at(0, search)
-				await vc.seek(vc.current.length * 1000)
-				await ctx.send("Playing the next song...")
-				embed = discord.Embed(title=search.title, url=search.uri, description=f"Now Playing {search.title}!", colour=discord.Colour.random())
-				embed.set_author(name=f"{search.author}")
-				embed.set_thumbnail(url=f"{search.artwork}")
+				await vc.skip(force=False)
+				embed = await self.create_embed(search, f"Now Playing {search.title}!")
 				await ctx.send(embed=embed)
 				logger.info(f"Playskipping to: {search.title}")
 			elif vc.paused:
@@ -125,6 +162,31 @@ class Music(commands.Cog):
 				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+
+	@commands.command(aliases=["Lofi"])
+	@GeneralFunctions.is_connected_to_same_voice()
+	async def lofi(self, ctx):
+		all_tracks = await wavelink.Playable.search("lofi hip hop radio - beats to relax/study to")
+		logger.debug(f"Queried lofi tracks: {all_tracks}")
+
+		if len(all_tracks) < 10:
+			await ctx.send("Not enough lofi tracks found. Please try again.")
+			return
+
+		selected_tracks = random.sample(all_tracks, 10)
+		
+		vc = ctx.voice_client
+		if not vc:
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+
+		first_track = selected_tracks[0]
+		embed = await self.play_track(vc, first_track)
+		await ctx.send(embed=embed)
+		logger.info(f"Playing from YouTube: {first_track.title}")
+
+		for track in selected_tracks[1:]:
+			await self.add_to_queue(vc, track)
+			logger.info(f"Queued from YouTube: {track.title}")
 
 	@commands.command(aliases=["Skip", "s", "S"])
 	@GeneralFunctions.is_connected_to_same_voice()
@@ -186,24 +248,8 @@ class Music(commands.Cog):
 		track = str(vc.current)
 
 		if vc.playing:
-			async with ctx.typing():
-				while True:
-					try:
-						logger.info(f"Relaying current playing song: {track} by {artist}")
-						song = genius.search_song(track, artist)
-						break
-					except TimeoutError:
-						logger.warning("GET request timed out, retrying...")
-				if song is None:
-					msg = "Unable to find current playing song on Genius, please try again..."
-					await GeneralFunctions.send_embed_error("Error Finding Song", msg, ctx)
-				else:
-					embed = discord.Embed(title=song.title, url=song.url, description=f"Currently playing {song.full_title}", colour=discord.Colour.random())
-					embed.set_author(name=f"{song.artist}")
-					embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
-					embed.set_footer()
-					logger.info("Current song information loaded from Genius API")
-					await ctx.send(embed=embed)
+			desc = "Currently playing: " + track
+			await GeneralFunctions.send_embed("Currently Playing", "dollarMusic.png", desc, ctx)
 		else:
 			msg = "There are no songs currently playing, you can queue one by using !play or !playsc"
 			raise commands.CheckFailure(msg)
@@ -285,47 +331,6 @@ class Music(commands.Cog):
 			msg = "The queue is currently empty, add a song by using !play or !playsc"
 			await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
 
-	@commands.command(aliases=["Load"])
-	@GeneralFunctions.is_connected_to_same_voice()
-	async def load(self, ctx):
-		vc = ctx.voice_client
-		count = 0
-
-		fileexists = os.path.isfile("ex.csv")
-
-		if fileexists:
-			await ctx.send("Loading playlist!")
-			logger.info("Loading Playlist")
-			data = read_csv("ex.csv")
-			os.remove("ex.csv")
-			tracks = data["Track Name"].tolist()
-			artists = data["Artist Name(s)"].tolist()
-			song = list(zip(tracks, artists))
-
-			while song:
-				if count == 75:
-					break
-				item = random.choice(song)
-				song.remove(item)
-				search = await wavelink.Playable.search(query=item[0] + " " + item[1], return_first=True)
-				if vc.playing:
-					async with ctx.typing():
-						vc.queue.put(item=search)
-						logger.info(f"Added {search} to queue from playlist")
-				elif vc.queue.is_empty:
-					await vc.play(search)
-					logger.info(f"Playing {search} from playlist")
-				else:
-					logger.error("Error queuing/playing from playlist")
-				count += 1
-
-			await ctx.send("Finished loading playlist heres the queued songs")
-			await Music.queue(self, ctx)
-			logger.info(f"Finished loading {count} songs into queue from playlist")
-		else:
-			logger.warning("ex.csv does not exist!")
-			raise commands.CheckFailure("Please upload an Exportify Playlist to this channel and then use !load")
-
 	@commands.command(aliases=["generatePlaylist", "GeneratePlaylist", "genplay", "genPlay"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def generateplaylist(self, ctx, playlist_type=None, musician=None, album=None):
@@ -400,7 +405,7 @@ class Music(commands.Cog):
 						msg = f"Lyrics can be found here: <{song.url}>"
 						return await GeneralFunctions.send_embed("Lyrics", "dollarMusic.png", msg, ctx)
 					embed = discord.Embed(title=song.title, url=song.url,
-										description=song.lyrics, colour=discord.Colour.random())
+										description=song.lyrics, color=discord.Color.random())
 					embed.set_author(name=f"{song.artist}")
 					embed.set_thumbnail(url=f"{song.header_image_thumbnail_url}")
 					embed.set_footer()
