@@ -17,7 +17,7 @@ class ReportBugModel(discord.ui.Modal, title="Report Bug"):
 	"""
 
 	def __init__(self):
-		pass
+		super().__init__()
 	
 	bug_title = discord.ui.TextInput(label="Bug Title", placeholder="Enter Bug Title", required=True)
 	bug_description = discord.ui.TextInput(placeholder="Enter a detailed description of the bug", label="Bug Description", required=True)
@@ -76,11 +76,11 @@ class FeatureRequestModel(discord.ui.Modal, title="Feature Request"):
 	"""
 
 	def __init__(self):
-		pass
+		super().__init__()
 
 	feature_title = discord.ui.TextInput(label="Feature Title", placeholder="Enter Feature Title", required=True)
 	feature_description = discord.ui.TextInput(placeholder="Enter a detailed description of the feature", label="Feature Description", required=True)
-
+ 
 	async def on_submit(self, interaction: discord.Interaction):
 		"""
 		DESCRIPTION: Fires on submit of Feature Request Model

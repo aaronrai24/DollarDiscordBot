@@ -3,7 +3,7 @@ DESCRIPTION: Common functions accessible by any class
 All general functions should be written here.
 """
 
-from ..common.libraries import(
+from .libraries import(
 	discord, logging, commands, wavelink, os, pool, 
 	requests, BeautifulSoup
 )
@@ -276,7 +276,7 @@ class GeneralFunctions():
 		headers = {
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
 			}
-		response = requests.get(url, headers=headers)
+		response = requests.get(url, headers=headers, timeout=60)
 		soup = BeautifulSoup(response.text, "html.parser")
 		image_results = soup.find_all("img")
 		return image_results[1]["src"]

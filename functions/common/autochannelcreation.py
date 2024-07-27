@@ -2,8 +2,8 @@
 DESCRIPTION: Functions for Auto Channel Creation resides here
 """
 #pylint: disable=not-async-context-manager
-import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
+from ..common import libraries as lib
 
 logger = GeneralFunctions.setup_logger("auto-channel-creation")
 
