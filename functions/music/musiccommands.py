@@ -9,7 +9,7 @@ from ..common.libraries import(
 
 from ..common.generalfunctions import GeneralFunctions
 from ..common.generalfunctions import CustomPlayer
-from functions.queries.queries import Queries
+from ..queries.queries import Queries
 
 logger = GeneralFunctions.setup_logger("music")
 

@@ -2,11 +2,11 @@
 DESCRIPTION: Main class that creates UnfilteredBot
 All client events should be written here.
 """
+from functions import GeneralFunctions
+from functions import AutoChannelCreation
+from functions import Queries
+from functions import PushNotifications
 import functions.common.libraries as lib
-from functions.common.generalfunctions import GeneralFunctions
-from functions.common.autochannelcreation import AutoChannelCreation
-from functions.queries.queries import Queries
-from functions.notifications.push_notifications import PushNotifications
 
 lib.load_dotenv()
 

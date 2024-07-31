@@ -2,9 +2,9 @@
 Dollar Customization Settings
 """
 
-import functions.common.libraries as lib
 from ..common.generalfunctions import GeneralFunctions
-from functions.queries.queries import Queries
+from ..queries.queries import Queries
+from ..common import libraries as lib
 
 logger = GeneralFunctions.setup_logger("settings")
 

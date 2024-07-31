@@ -1,7 +1,7 @@
 """
 DESCRIPTION: Queries for the database reside here
 """
-
+#pylint: disable=not-callable
 from ..common.libraries import(
 	commands, wraps, ProgrammingError, IntegrityError, 
 	DatabaseError, Error
