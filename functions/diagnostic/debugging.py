@@ -1,6 +1,7 @@
 """
 DESCRIPTION: Debugging functions reside here
 """
+#pylint: disable=useless-parent-delegation
 from ..common.libraries import (
 	discord, os, commands, threading, traceback, sys, time,
 	psutil, asyncio, requests, json, logging, START_TIME, 
