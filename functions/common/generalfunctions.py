@@ -48,6 +48,17 @@ class GeneralFunctions():
 			logger.setLevel(logging.INFO)
 		return logger
 
+	async def send_discord_dm(self, member, message):
+		"""
+		Send a direct message to a specified member.
+		
+		Parameters:
+		- member (discord.Member): The member to send the message to.
+		- message (str): The message to send.
+		"""
+		logger.info(f"Sending DM to {member}...")
+		await member.send(message)
+
 	def is_connected_to_same_voice():
 		"""
 		Check if the command invoker is connected to the same voice channel.
