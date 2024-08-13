@@ -1,4 +1,4 @@
-Dollar 1.1.10 updates Youtube-Source to 1.5.1, Wavelink to 3.4.1 and lavalink to 4.0.7 to fix some minor issues found in the three dependencies and to improve compatibility with standard Lavaplayer. Development of Dollar 2.0 is still ongoing and will be released soon after the completion of the new features and improvements as well as the necessary testing.
+Dollar 1.1.10 is another small update that catches up with the latest Lavalink version, 4.0.7. We also updated our other dependencies to their latest versions.
 
 ## Fixes and Enhancements
 
