@@ -7,6 +7,7 @@ Ok to ignore unused libraries.
 import asyncio
 import datetime
 import discord
+import googlemaps
 import json
 import logging
 import logging.handlers
