@@ -29,7 +29,7 @@ async def get_user_info(interaction: lib.discord.Interaction, user: lib.discord.
 	PARAMETERS: discord.Interaction - Discord Interaction
 	"""
 	msg = f"""User: {user.name}\nPreferred Name: {user.display_name}\nCreated Their Account: {user.created_at}\nJoined This Discord: {user.joined_at}
-Roles: {', '.join([role.name for role in user.roles])}\nIcon: {user.avatar}\nBanner: {user.banner}
+Roles: {", ".join([role.name for role in user.roles])}\nIcon: {user.avatar}\nBanner: {user.banner}
 	"""
 	await interaction.response.send_message(msg, ephemeral=True)
 
