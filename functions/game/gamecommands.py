@@ -7,7 +7,7 @@ from ..common.libraries import(
 )
 from ..common.generalfunctions import GeneralFunctions
 
-logger = GeneralFunctions.setup_logger("game-commands")
+logger = GeneralFunctions.setup_logger("game")
 
 class GameCommands(commands.Cog):
 	"""

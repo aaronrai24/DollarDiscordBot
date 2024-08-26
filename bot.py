@@ -26,12 +26,11 @@ class UnfilteredBot(lib.commands.Bot):
 		ctx = await self.get_context(message)
 		await self.invoke(ctx)
 
-	mydb = GeneralFunctions.connect_to_database()
-
 	async def setup_hook(self):
 		"""
 		DESCRIPTION: Send patch notes, load cogs, and sync app commands
 		"""
+		logger.info("=== Starting Dollar ===")
 		for cog in exts:
 			try:
 				logger.debug(f"Loading ext {cog}")
@@ -42,6 +41,7 @@ class UnfilteredBot(lib.commands.Bot):
 				logger.error(f"Failed to load ext {cog}\n{exc}")
 		logger.info("Loaded Extensions!")
 		try:
+			logger.debug("Syncing commands...")
 			synced = await self.tree.sync()
 			logger.debug(f"Synced {len(synced)} command(s)")
 		except Exception as e:
@@ -49,8 +49,11 @@ class UnfilteredBot(lib.commands.Bot):
 		logger.info("Synced commands!")
 
 	async def close(self):
+		logger.info("=== Closing Dollar ===")
 		await super().close()
 		await self.session.close()
+
+	mydb = GeneralFunctions.connect_to_database()
 
 client = UnfilteredBot(command_prefix="!", intents=lib.discord.Intents.all(), help_command=None)
 
@@ -74,6 +77,7 @@ async def connect_nodes():
 	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
 	logger.info(f"Node: <{nodes}> is ready")
 	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
+	logger.info("=== Dollar is ready ===")
 
 #------------------------------------------------------------------------------------------------
 # Tasks

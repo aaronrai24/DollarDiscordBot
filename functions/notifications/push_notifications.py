@@ -7,6 +7,32 @@ from ..common import libraries as lib
 
 logger = GeneralFunctions.setup_logger("notifications")
 
+@lib.discord.app_commands.context_menu(name="Poke User")
+async def poke_user(interaction: lib.discord.Interaction, user: lib.discord.Member):
+	"""
+	DESCRIPTION: Pokes a user and notifies them to join a voice channel
+	PARAMETERS: discord.Interaction - Discord Interaction
+	"""
+	command_user = interaction.user
+	
+	if command_user.voice and command_user.voice.channel:
+		await interaction.response.send_message(f"Poking {user.mention} to join your voice channel!", ephemeral=True)
+		invite = await command_user.voice.channel.create_invite(max_uses=1, unique=True)
+		await user.send(f"Yo, {interaction.user} wants you to join their voice channel in {interaction.guild.name}! {invite.url}")
+	else:
+		await interaction.response.send_message("You need to be in a voice channel before using this command.", ephemeral=True)
+
+@lib.discord.app_commands.context_menu(name="User Information")
+async def get_user_info(interaction: lib.discord.Interaction, user: lib.discord.Member):
+	"""
+	DESCRIPTION: Gets user information
+	PARAMETERS: discord.Interaction - Discord Interaction
+	"""
+	msg = f"""User: {user.name}\nPreferred Name: {user.display_name}\nCreated Their Account: {user.created_at}\nJoined This Discord: {user.joined_at}
+Roles: {', '.join([role.name for role in user.roles])}\nIcon: {user.avatar}\nBanner: {user.banner}
+	"""
+	await interaction.response.send_message(msg, ephemeral=True)
+
 class PushNotifications(lib.commands.Cog):
 	"""
 	DESCRIPTION: Creates Push_Notifications class
@@ -35,3 +61,5 @@ class PushNotifications(lib.commands.Cog):
 
 async def setup(bot):
 	await bot.add_cog(PushNotifications(bot))
+	bot.tree.add_command(poke_user)
+	bot.tree.add_command(get_user_info)
