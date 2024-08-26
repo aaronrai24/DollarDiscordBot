@@ -69,7 +69,7 @@ class PushNotifications(lib.commands.Cog):
 		work_address = Queries.get_users_work_address(self.mydb, member.id)
 
 		google_maps_api_key = lib.os.getenv("GOOGLE_MAPS_API_KEY")
-		gmaps = googlemaps.Client(key=google_maps_api_key)
+		gmaps = lib.googlemaps.Client(key=google_maps_api_key)
 
 		directions = gmaps.directions(home_address, work_address)
 		first_leg = directions[0]["legs"][0]
