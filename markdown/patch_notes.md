@@ -1,4 +1,4 @@
-Long awaited update to Dollar! Here is each new feature broken down, followed by a list of fixes and enhancements. 
+Dollar 2.0! Here we go. 
 
 ## New Features
 
@@ -18,6 +18,11 @@ Long awaited update to Dollar! Here is each new feature broken down, followed by
 - Added a new feature to get pinged for new patch notes for a game you are subscribed to.
 - Simply add a 🔔 emoji as a reaction to a game you want to be notified for and Dollar will create a thread on subsequent patch note updates and @you in the thread.
 - To unsubscribe, simple add a ❌ emoji as a reaction to the game you want to unsubscribe from.
+
+### Context Menu Commands
+- Added a new feature that allows users to interact with Dollar using context menus.
+  - Users can now `Poke User` to send a message to a user to join a voice channel. Simply right-click on a user and navigate to `Apps > Poke User`, and Dollar will take care of the rest.
+  - Also added a `User Information` context menu that allows users to view information about a user.
 
 ### Deeper Integration with Spotipy API
 
@@ -50,7 +55,7 @@ Long awaited update to Dollar! Here is each new feature broken down, followed by
 - Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
 - Fixed an issue where orphaned channels were getting created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).
 - Fixed an issue where `!nowplaying` would not display the correct song playing
-- Manged dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
+- Managed dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
 
 ### Deprecated Features
