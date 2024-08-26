@@ -12,11 +12,7 @@ Stay tuned for weekly updates and exciting new features as Dollar continually ev
 ## To add Dollar to your Discord:
 Click the following [link](https://discord.com/api/oauth2/authorize?client_id=1044813990473257081&permissions=8&scope=applications.commands%20bot) to add to your Discord!
 - Dollar will DM you with a welcome message and what to do next! 
-- For a list of commands, type `!help` in the designated text channel.
-
-## Issues/Feature Requests
-
-We are also tracking numerous bugs and feature requests on our public [issues board](https://github.com/aaronrai24/DollarDiscordBot/issues). We'd appreciate any bugs/features requests be submitted by using Dollar's `/featurerequest` and `/reportbug` commands.
+- For a list of commands, type `/help` in the designated text channel. This will provide you with a list of buttons for each category of commands.
 
 ## For Developers
 
@@ -51,16 +47,18 @@ docker-compose up --build -d
 12. DB_PASS - Database password
 13. DB_SCHEMA - Database schema
 - Store these tokens in a `.env` file following that syntax
+- Alongside a `application.yml` file that contains the lavalink configuration is required in the root directory.
 
 ### Logging
 We have begun to develop a standard for logging. For debugging purposes do not rely on the console output, and turn to the `discord.log` instead. 
 Summary of loggers:
-- music: Relates to music related commands and functions
-- game-commands: Relates to game commands
-- watchlist: Relates to watchlist commands
-- core: General logger that is used in Dollar's core functions that are used repeatedly
-- dollar: General logger that is used in Dollar's core functions that are used repeatedly
-- diagnostic: Relates to Dollar diagnostic commands that are ADMIN only. Ensures diagnostic commands are working properly
 - administrative: Relates to administrative commands
+- auto-channel-creation: Relates to auto channel creation
+- core: General logger that is used in Dollar's core functions that are used repeatedly
+- diagnostic: Relates to Dollar diagnostic commands that are ADMIN only. Ensures diagnostic commands are working properly
+- dollar: General logger that is used in Dollar's core functions that are used repeatedly
+- game: Relates to game commands
+- music: Relates to music related commands and functions
+- notifications: Relates to notifications
 - queries: Relates to database queries
 - settings: Relates to settings commands
