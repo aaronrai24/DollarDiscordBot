@@ -166,7 +166,15 @@ class Music(commands.Cog):
 	@commands.command(aliases=["Lofi"])
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def lofi(self, ctx):
-		all_tracks = await wavelink.Playable.search("lofi hip hop radio - beats to relax/study to")
+		lofii_list = [
+			"lofi hip hop radio - beats to relax/study to",
+			"90's chill lofi study music lofi rain chillhop beats",
+			"Autumn lofi vibes",
+			"synthwave lofi",
+			"chillhop radio - jazzy & lofi hip hop beats"
+		]
+		lofi = random.choice(lofii_list)
+		all_tracks = await wavelink.Playable.search(lofi)
 		logger.debug(f"Queried lofi tracks: {all_tracks}")
 
 		if len(all_tracks) < 10:

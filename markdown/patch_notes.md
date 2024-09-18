@@ -8,6 +8,11 @@ Dollar 2.0! Here we go.
 - Users can customize their preferred names for their text, voice and shows discord channels.
 - This will set dollars trigger channels to respond to commands and for the auto-channel-creation feature to work.
 
+### User Information
+- Added a new feature that allows user to give information like home/work address using the `/updateuserinfo` command.
+- This information is planned to be used for future featurs.
+- **Note**: This information is stored in the database securely and is not shared with anyone.
+
 ### Docker Containerization
 
 - Dollar is now containerized using Docker. This allows for easier deployment and scaling of the bot.
@@ -29,16 +34,6 @@ Dollar 2.0! Here we go.
 - Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify. This command will play the first result found on Spotify.
 - Added a new command, `!lofi`, that plays lofi playlist on Spotify.
 
-### ETA to Work Notifications
-
-- Added a new feature that DMs users with an ETA to work based on their home address and work address. This feature is activated by setting the home and work addresses using the `/updateuserinfo` command. The ETA is calculated using the Google Maps API.
-- DMs are sent at 6:30 AM every weekday morning. This feature is disabled on weekends.
-
-### Weather Notifications
-
-- Added a new feature that DMs users with the weather forecast for the day. This feature is activated by setting the home address using the `/updateuserinfo` command. The weather forecast is calculated using the OpenWeatherMap API.
-- DMs are sent at 6:30 AM every morning. This feature is disabled on weekends.
-
 ### Embed Creator
 
 - Added a new feature that allows users to create custom embeds using the `!embed` command.
@@ -48,9 +43,10 @@ Dollar 2.0! Here we go.
 ### Fixes and Enhancements
 
 - Added more debug loggers ([#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)) to help with debugging codebase
+- Added ability to reload dollars extensions without restarting the bot ([#113](https://github.com/aaronrai24/DollarDiscordBot/issues/113))
 - Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
 - Added message reactions to reduce spam in the preferred text channel/commands channel
-- Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by updating Java on Dollar's server
+- Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by switching to Docker
 - Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes([#85](https://github.com/aaronrai24/DollarDiscordBot/issues/85)).
 - Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
 - Fixed an issue where orphaned channels were getting created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).

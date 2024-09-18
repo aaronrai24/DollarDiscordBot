@@ -35,5 +35,24 @@ class Admin(lib.commands.Cog):
 				await ctx.channel.purge(limit=val)
 				logger.info(f"Removed {val} messages")
 
+	@lib.commands.command()
+	@lib.commands.is_owner()
+	async def reload(self, ctx, extension):
+		"""
+		DESCRIPTION: Reloads a cog
+		PARAMETERS: ctx - context of message
+					extension - name of cog to reload
+		RETURNS: None
+		"""
+		try:
+			await self.bot.unload_extension(extension)
+			await self.bot.load_extension(extension)
+			await ctx.send(f"Reloaded {extension}")
+			logger.info(f"Reloaded {extension}")
+		except Exception as e: # pylint: disable=broad-except
+			await ctx.send(f"Error reloading {extension}, Cause: {e}")
+			logger.error(f"Error reloading {extension}: {e}")
+
+
 async def setup(bot):
 	await bot.add_cog(Admin(bot))
