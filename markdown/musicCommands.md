@@ -10,7 +10,10 @@
 - `!play` (Song)  - Plays desired song from YouTube Music
 - `!playskip` (Song)  - Skips current playing song and plays song you chose from YouTube Music
 - `!queue`  - Prints out all items in queue
+- `!remove` (int value)  - Removes song from queue
 - `!replay` - Restarts current playing song
 - `!resume`  - Resumes last played song 
 - `!seek` (int value)  - Fast forward or backtrack current playing song
+- `!shuffle`  - Shuffles queue
 - `!skip`  - Skips current song
+- `!swap` (int value) (int value)  - Swaps two songs in queue

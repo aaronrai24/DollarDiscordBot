@@ -31,6 +31,18 @@ docker compose up -d
 docker-compose up --build -d
 ```
 
+- A helper script has been created to make this process easier. To use the script, run the following command:
+
+Windows:
+```bash
+.\scripts\rebuild-and-prune.ps1
+```
+
+Linux:
+```bash
+./scripts/rebuild-and-prune.sh
+```
+
 ### API Auth Keys
 - Numerous Keys are required to take advantage of Dollars Spotify, Game and GitHub commands. Here is a list of API keys that are used:
 1. DISCORD_TOKEN - Discord bot token
