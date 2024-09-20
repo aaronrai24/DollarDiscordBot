@@ -1,5 +1,3 @@
-Dollar 2.0! Here we go. 
-
 ## New Features
 
 ### Dollar Settings
@@ -7,6 +5,12 @@ Dollar 2.0! Here we go.
 - Added a new feature that allows users to customize the bot's settings to your discord using the `/dollarsettings` command.
 - Users can customize their preferred names for their text, voice and shows discord channels.
 - This will set dollars trigger channels to respond to commands and for the auto-channel-creation feature to work.
+
+### Music Improvements
+- Added `!lofi` command that generates a lofi playlist of songs to play.
+- Added `!remove (song number)` command to remove a song from the queue.
+- Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
+- Added `!shuffle` command to shuffle the queue.
 
 ### User Information
 - Added a new feature that allows user to give information like home/work address using the `/updateuserinfo` command.
@@ -32,7 +36,6 @@ Dollar 2.0! Here we go.
 ### Deeper Integration with Spotipy API
 
 - Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify. This command will play the first result found on Spotify.
-- Added a new command, `!lofi`, that plays lofi playlist on Spotify.
 
 ### Embed Creator
 

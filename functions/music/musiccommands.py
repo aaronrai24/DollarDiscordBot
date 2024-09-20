@@ -232,6 +232,67 @@ class Music(commands.Cog):
 				await GeneralFunctions.send_embed_error("No Song Playing", msg, ctx)
 		else:
 			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+	
+	@commands.command(aliases=["Remove"])
+	@GeneralFunctions.is_connected_to_same_voice()
+	async def remove(self, ctx, index: int):
+		vc = ctx.voice_client
+
+		if vc:
+			if vc.queue.is_empty:
+				await ctx.message.add_reaction("\u274C")
+				msg = "The queue is currently empty, add a song by using !play or !playsc"
+				await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
+			else:
+				try:
+					vc.queue.delete(index - 1)
+					await ctx.message.add_reaction("\u2705")
+					logger.info(f"Removed song at index: {index} from queue")
+				except IndexError:
+					await ctx.message.add_reaction("\u274C")
+					msg = "The index provided is out of range, please try again."
+					await GeneralFunctions.send_embed_error("Index Out of Range", msg, ctx)
+		else:
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+	
+	@commands.command(aliases=["Swap"])
+	@GeneralFunctions.is_connected_to_same_voice()
+	async def swap(self, ctx, song_one: int, song_two: int):
+		vc = ctx.voice_client
+
+		if vc:
+			if vc.queue.is_empty:
+				await ctx.message.add_reaction("\u274C")
+				msg = "The queue is currently empty, add a song by using !play or !playsc"
+				await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
+			else:
+				try:
+					vc.queue.swap(song_one - 1, song_two - 1)
+					await ctx.message.add_reaction("\u2705")
+					logger.info(f"Swapped song at index: {song_one} with song at index: {song_two}")
+				except IndexError:
+					await ctx.message.add_reaction("\u274C")
+					msg = "The index provided is out of range, please try again."
+					await GeneralFunctions.send_embed_error("Index Out of Range", msg, ctx)
+		else:
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
+		
+	@commands.command(aliases=["Shuffle"])
+	@GeneralFunctions.is_connected_to_same_voice()
+	async def shuffle(self, ctx):
+		vc = ctx.voice_client
+
+		if vc:
+			if vc.queue.is_empty:
+				await ctx.message.add_reaction("\u274C")
+				msg = "The queue is currently empty, add a song by using !play or !playsc"
+				await GeneralFunctions.send_embed_error("Empty Queue", msg, ctx)
+			else:
+				vc.queue.shuffle()
+				await ctx.message.add_reaction("\u2705")
+				logger.info("Shuffled queue")
+		else:
+			raise commands.CheckFailure("The bot is not connected to a voice channel.")
 
 	@commands.command(aliases=["Resume", "Pause", "resume", "pause"])
 	@GeneralFunctions.is_connected_to_same_voice()

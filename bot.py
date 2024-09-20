@@ -76,7 +76,7 @@ async def connect_nodes():
 							retries=None, heartbeat=60, inactive_player_timeout=600)]
 	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
 	logger.info(f"Node: <{nodes}> is ready")
-	await client.change_presence(activity=lib.discord.Game(name=" Music! | !help"))
+	await client.change_presence(activity=lib.discord.Game(name=" Dollar 2.0! | /help"))
 	logger.info("=== Dollar is ready ===")
 
 #------------------------------------------------------------------------------------------------
