@@ -45,16 +45,16 @@ DEVELOPER = os.getenv('CASH')
 DISCORD_TOKEN = os.getenv('TOKEN')
 DOLLAR_BOT_ID = "DollarTest#1851"
 ERROR_MAPPING = {
-    commands.MissingRole: ("Missing Required Role", "User has insufficient role"),
-    commands.CommandNotFound: ("Command Not Found", "User tried to use a command that does not exist"),
-    commands.BadArgument: ("Invalid Argument", "User provided an invalid argument"),
+	commands.MissingRole: ("Missing Required Role", "User has insufficient role"),
+	commands.CommandNotFound: ("Command Not Found", "User tried to use a command that does not exist"),
+	commands.BadArgument: ("Invalid Argument", "User provided an invalid argument"),
    	commands.CheckFailure: ("Incorrect Command Usage", "User used command incorrectly"),
-    discord.errors.PrivilegedIntentsRequired: ("Missing Required Intent", "Bot is missing required intent"),
-    commands.CommandOnCooldown: ("Command Cooldown", "Command on cooldown for user"),
-    wavelink.LavalinkException: ("Lavalink Error", "Lavalink error occurred"),
-    wavelink.InvalidChannelStateException: ("Invalid Channel State", "Invalid channel state"),
+	discord.errors.PrivilegedIntentsRequired: ("Missing Required Intent", "Bot is missing required intent"),
+	commands.CommandOnCooldown: ("Command Cooldown", "Command on cooldown for user"),
+	wavelink.LavalinkException: ("Lavalink Error", "Lavalink error occurred"),
+	wavelink.InvalidChannelStateException: ("Invalid Channel State", "Invalid channel state"),
 }
-GITHUB_TOKEN = os.getenv('GITHUBTOKEN')
+GITHUB_TOKEN = os.getenv('GHUBTOKEN')
 PATCHES_CHANNEL = os.getenv('PATCHES_CHANNEL')
 RIOT_TOKEN = os.getenv('RIOTTOKEN')
 START_TIME = time.time()
@@ -67,8 +67,6 @@ created_channels = set()
 genius = Genius('GENIUSTOKEN')
 guild_text_channels = {}
 guild_voice_channels = {}
-idle_tasks = {}
-user_usage = defaultdict(lambda: {'timestamp': 0, 'count': 0})
 
 # Authenticate application with Spotify
 client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)

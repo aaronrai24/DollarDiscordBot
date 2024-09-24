@@ -88,15 +88,7 @@ class SettingsModal(lib.discord.ui.Modal, title="DollarSettings"):
 		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		if isinstance(error, lib.discord.NotFound):
-			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
-		elif isinstance(error, lib.discord.Forbidden):
-			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
-		elif isinstance(error, lib.discord.HTTPException):
-			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
-		else:
-			message = "Oops! Something went wrong. Please report this bug using /reportbug."
-
+		message = GeneralFunctions.modal_error_check(error)
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
@@ -138,15 +130,7 @@ class UserInfoModal(lib.discord.ui.Modal, title="UserInfo"):
 		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		if isinstance(error, lib.discord.NotFound):
-			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
-		elif isinstance(error, lib.discord.Forbidden):
-			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
-		elif isinstance(error, lib.discord.HTTPException):
-			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
-		else:
-			message = "Oops! Something went wrong. Please report this bug using /reportbug."
-
+		message = GeneralFunctions.modal_error_check(error)
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
@@ -160,7 +144,7 @@ class Settings(lib.commands.Cog):
 		self.bot = bot
 		self.mydb = bot.mydb
 
-	@GeneralFunctions.is_guild_owner()
+	@GeneralFunctions.is_guild_owner_interaction()
 	@lib.discord.app_commands.command(name="dollarsettings", description="Change Dollar Settings")
 	async def settings(self, interaction: lib.discord.Interaction):
 		"""

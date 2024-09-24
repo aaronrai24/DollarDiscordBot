@@ -1,4 +1,5 @@
 - `/dollarsettings` - Displays a Modal to set Guilds preferred channels to manage commands(text), auto-channel creation(voice), and show/movie voice channel
+- `/embedcreator` - Displays a Modal to create an embed message. Title, Description, Thumbnail, Footer are customizable.
 - `/featurerequest` - Submit a feature request to the developers.
 - `/help` - Displays a view with buttons to navigate to specific help topics.
 - `/reportbug` - Report a bug to the developers.
