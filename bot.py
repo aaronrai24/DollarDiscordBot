@@ -105,7 +105,6 @@ async def on_ready():
 		lib.guild_voice_channels[str(guild)] = queries.get_guilds_preferred_voice_channel(str(guild))
 	logger.info(f"Cached text and voice channels, text: {lib.guild_text_channels}, voice: {lib.guild_voice_channels}")
 
-# Event was created
 @client.event
 async def on_scheduled_event_create(event):
 	"""

@@ -78,7 +78,7 @@ class GeneralFunctions():
 
 	def is_guild_owner():
 		"""
-		Check if the command invoker is the guild owner.
+		Check if the command invoker is the guild owner. CTX Context.
 
 		Returns:
 		- A check function that raises `commands.CheckFailure`
@@ -88,6 +88,19 @@ class GeneralFunctions():
 				raise commands.CheckFailure("You need to be the guild owner to use this command")
 			return True
 		return commands.check(predicate)
+	
+	def is_guild_owner_interaction():
+		"""
+		Check if the command invoker is the guild owner. Interaction Context.
+
+		Returns:
+		- A check function that raises `app_commands.CheckFailure`
+		"""
+		async def predicate(interaction: discord.Interaction) -> bool:
+			if interaction.user.id != interaction.guild.owner_id:
+				raise discord.app_commands.CheckFailure("You need to be the guild owner to use this command.")
+			return True
+		return discord.app_commands.check(predicate)
 	
 	async def get_bot_member(guild: discord.Guild, bot: discord.Client):
 		"""
@@ -215,7 +228,7 @@ class GeneralFunctions():
 		Returns:
 		- None
 		"""
-		embed = discord.Embed(title=title, description=msg, colour=0x2ecc71)
+		embed = discord.Embed(title=title, description=msg, color=discord.Color.random())
 		embed.set_author(name="Dollar")
 		file_path = os.path.join("images", image)
 		img = discord.File(file_path, filename=image)
@@ -265,7 +278,7 @@ class GeneralFunctions():
 		embed = discord.Embed(title=title, description=description, colour=0x2ecc71)
 		embed.set_author(name=author, icon_url=author.avatar.url)
 		if image:
-			embed.set_thumbnail(url=f"attachment://{image}")
+			embed.set_thumbnail(url=image)
 		if footer:
 			embed.set_footer(text=footer)
 		logger.debug("Embed created successfully, returning...")
@@ -280,5 +293,22 @@ class GeneralFunctions():
 		soup = BeautifulSoup(response.text, "html.parser")
 		image_results = soup.find_all("img")
 		return image_results[1]["src"]
+	
+	def modal_error_check(error):
+		"""
+		DESCRIPTION: Fires on error of Settings Modal
+		PARAMETERS: error - Exception
+		"""
+		if isinstance(error, discord.NotFound):
+			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
+		elif isinstance(error, discord.Forbidden):
+			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
+		elif isinstance(error, discord.HTTPException):
+			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
+		else:
+			message = "Oops! Something went wrong. Please report this bug using /reportbug."
+
+		return message
+		
 
 logger = GeneralFunctions.setup_logger("core")

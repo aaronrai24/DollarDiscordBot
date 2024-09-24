@@ -39,8 +39,8 @@
 
 ### Embed Creator
 
-- Added a new feature that allows users to create custom embeds using the `!embed` command.
-- Users can create custom embeds by providing the title, description, color, and fields for the embed.
+- Added a new feature that allows users to create custom embeds using the `/embed` command.
+- Users can create custom embeds by providing the title, description, thumbnail(url), and footer.
 - The bot will then create an embed with the provided information and post it in the channel.
 
 ### Fixes and Enhancements
@@ -56,6 +56,7 @@
 - Fixed an issue where `!nowplaying` would not display the correct song playing
 - Managed dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
+- Changed `!help` to `/help` and used a discord.UI.View with buttons to display the help menu.
 
 ### Deprecated Features
 

@@ -3,16 +3,31 @@ services:
     build: .
     container_name: dollar
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     volumes:
       - ./discord.log:/app/discord.log
     networks:
       - dollar
     environment:
-      TZ: "America/Los_Angeles"
+      TOKEN: ${TOKEN}
+      GENIUSTOKEN: ${GENIUSTOKEN}
+      LAVALINK_TOKEN: ${LAVALINK_TOKEN}
+      LAVALINK_EMAIL: ${LAVALINK_EMAIL}
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD}
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      TRACKERGG: ${TRACKERGG}
+      RIOTTOKEN: ${RIOTTOKEN}
+      GHUBTOKEN: ${GHUBTOKEN}
+      DB_USER: ${DB_USER}
+      DB_PW: ${DB_PW}
+      DB_SCHEMA: ${DB_SCHEMA}
+      PATCHES_CHANNEL: ${PATCHES_CHANNEL}
+      CASH: ${CASH}
+      TZ: America/Los_Angeles
     ports:
       - "5000:5000"
+    restart: unless-stopped
 
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4

@@ -26,12 +26,24 @@ async def poke_user(interaction: lib.discord.Interaction, user: lib.discord.Memb
 async def get_user_info(interaction: lib.discord.Interaction, user: lib.discord.Member):
 	"""
 	DESCRIPTION: Gets user information
-	PARAMETERS: discord.Interaction - Discord Interaction
+	PARAMETERS: interaction - Discord Interaction, user - Discord Member
 	"""
-	msg = f"""User: {user.name}\nPreferred Name: {user.display_name}\nCreated Their Account: {user.created_at}\nJoined This Discord: {user.joined_at}
-Roles: {", ".join([role.name for role in user.roles])}\nIcon: {user.avatar}\nBanner: {user.banner}
-	"""
-	await interaction.response.send_message(msg, ephemeral=True)
+	#pylint: disable=inconsistent-quotes
+	msg = (f"User: {user.name}\n"
+		   f"Preferred Name: {user.display_name}\n"
+		   f"Created Their Account: {user.created_at}\n"
+		   f"Joined This Discord: {user.joined_at}\n"
+		   f"Roles: {', '.join([role.name for role in user.roles])}")
+	
+	embed = GeneralFunctions.create_embed(
+		title="User Information",
+		description=msg,
+		author=user,
+		image=user.avatar.url if user.avatar else None,
+		footer=f"Requested by {interaction.user}"
+	)
+	
+	await interaction.response.send_message(embed=embed)
 
 class PushNotifications(lib.commands.Cog):
 	"""

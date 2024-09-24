@@ -58,15 +58,7 @@ class ReportBugModel(discord.ui.Modal, title="Report Bug"):
 		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		if isinstance(error, discord.NotFound):
-			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
-		elif isinstance(error, discord.Forbidden):
-			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
-		elif isinstance(error, discord.HTTPException):
-			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
-		else:
-			message = "Oops! Something went wrong. Please report this bug using /reportbug."
-
+		message = GeneralFunctions.modal_error_check(error)
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
@@ -117,15 +109,7 @@ class FeatureRequestModel(discord.ui.Modal, title="Feature Request"):
 		DESCRIPTION: Fires on error of Settings Modal
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		if isinstance(error, discord.NotFound):
-			message = "Oops! The item you were looking for was not found. Please report this bug using /reportbug."
-		elif isinstance(error, discord.Forbidden):
-			message = "Oops! I don't have permission to do that. Please report this bug using /reportbug."
-		elif isinstance(error, discord.HTTPException):
-			message = "Oops! Something went wrong with the Discord server. Please report this bug using /reportbug."
-		else:
-			message = "Oops! Something went wrong. Please report this bug using /reportbug."
-
+		message = GeneralFunctions.modal_error_check(error)
 		await interaction.response.send_message(message, ephemeral=True)
 		logger.error(f"An error occurred: {error}")
 
