@@ -10,7 +10,6 @@
 - Added `!remove (song number)` command to remove a song from the queue.
 - Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
 - Added `!shuffle` command to shuffle the queue.
-- Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify.
 
 ### Patch Note Notifications
 
