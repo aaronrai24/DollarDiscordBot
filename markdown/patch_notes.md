@@ -5,6 +5,16 @@
 - Added a new feature that allows users to customize the bot's settings to your discord using the `/dollarsettings` command.
 - Users can customize their preferred names for their text, voice and shows discord channels.
 
+### User Information
+- Added a new feature that allows user to give information like home/work address using the `/updateuserinfo` command.
+- This information is planned to be used for future featurs.
+- **Note**: This information is stored in the database securely and is not shared with anyone.
+
+### Docker Containerization
+
+- Dollar is now containerized using Docker. This allows for easier deployment and scaling of the bot.
+- Included in the Docker container are images for the bot, the database, and lavalink.
+
 ### Music Improvements
 - Added `!lofi` command that generates a lofi playlist of songs to play.
 - Added `!remove (song number)` command to remove a song from the queue.
