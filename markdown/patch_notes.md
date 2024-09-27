@@ -4,13 +4,6 @@
 
 - Added a new feature that allows users to customize the bot's settings to your discord using the `/dollarsettings` command.
 - Users can customize their preferred names for their text, voice and shows discord channels.
-- This will set dollars trigger channels to respond to commands and for the auto-channel-creation feature to work.
-
-### Music Improvements
-- Added `!lofi` command that generates a lofi playlist of songs to play.
-- Added `!remove (song number)` command to remove a song from the queue.
-- Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
-- Added `!shuffle` command to shuffle the queue.
 
 ### User Information
 - Added a new feature that allows user to give information like home/work address using the `/updateuserinfo` command.
@@ -21,6 +14,12 @@
 
 - Dollar is now containerized using Docker. This allows for easier deployment and scaling of the bot.
 - Included in the Docker container are images for the bot, the database, and lavalink.
+
+### Music Improvements
+- Added `!lofi` command that generates a lofi playlist of songs to play.
+- Added `!remove (song number)` command to remove a song from the queue.
+- Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
+- Added `!shuffle` command to shuffle the queue.
 
 ### Patch Note Notifications
 
@@ -33,10 +32,6 @@
   - Users can now `Poke User` to send a message to a user to join a voice channel. Simply right-click on a user and navigate to `Apps > Poke User`, and Dollar will take care of the rest.
   - Also added a `User Information` context menu that allows users to view information about a user.
 
-### Deeper Integration with Spotipy API
-
-- Added a new command, `!spotify_playlist (playlist name)`, that allows users to search for playlists on Spotify. This command will play the first result found on Spotify.
-
 ### Embed Creator
 
 - Added a new feature that allows users to create custom embeds using the `/embed` command.
@@ -44,17 +39,12 @@
 - The bot will then create an embed with the provided information and post it in the channel.
 
 ### Fixes and Enhancements
-
-- Added more debug loggers ([#66](https://github.com/aaronrai24/DollarDiscordBot/issues/66)) to help with debugging codebase
-- Added ability to reload dollars extensions without restarting the bot ([#113](https://github.com/aaronrai24/DollarDiscordBot/issues/113))
+- Resolved the following issue numbers: [66, 113, 60, 85, 112, 115, 106], for more details please refer to the [GitHub repository](https://github.com/aaronrai24/DollarDiscordBot/issues/)
 - Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
 - Added message reactions to reduce spam in the preferred text channel/commands channel
-- Addressed java.lang.RuntimeException ([#60](https://github.com/aaronrai24/DollarDiscordBot/issues/60)) by switching to Docker
-- Cleaned up codebase and removed unused imports as well as corrected current methods to import libraries and classes([#85](https://github.com/aaronrai24/DollarDiscordBot/issues/85)).
 - Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
-- Fixed an issue where orphaned channels were getting created by Dollar's auto-channel-creation feature ([#112](https://github.com/aaronrai24/DollarDiscordBot/issues/112)).
 - Fixed an issue where `!nowplaying` would not display the correct song playing
-- Managed dollar settings for existing servers ([#106](https://github.com/aaronrai24/DollarDiscordBot/issues/106)) by adding an extra step when entering dollar settings to ensure the guild is in the database.
+- Fixed an issue where `!generateplaylist` would not generate a playlist
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
 - Changed `!help` to `/help` and used a discord.UI.View with buttons to display the help menu.
 

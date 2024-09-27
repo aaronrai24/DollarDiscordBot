@@ -404,53 +404,48 @@ class Music(commands.Cog):
 	@GeneralFunctions.is_connected_to_same_voice()
 	async def generateplaylist(self, ctx, playlist_type=None, musician=None, album=None):
 		vc = ctx.voice_client
-		count = 0
 		offset = random.randint(0, 1000)
 
-		query = ""
-		if playlist_type:
-			query += f"genre:{playlist_type}"
-		if musician:
-			query += f" artist:{musician}"
-		if album:
-			query += f" album:{album}"
+		query = " ".join(filter(None, [
+			f"genre:{playlist_type}" if playlist_type else None,
+			f"artist:{musician}" if musician else None,
+			f"album:{album}" if album else None
+		]))
 
 		if not query:
 			await ctx.send("Please provide at least one parameter.")
 			logger.warning("No filters entered, exiting method")
 			return
+
 		logger.info(f"Spotify Generating Playlist, Parameters: Genre: {playlist_type}, Artist: {musician}, Album: {album}")
-		results = sp.search(q=query, type="track", limit=25, offset=offset)
-		logger.info("Spotify Playlist Generation complete, querying songs...")
+		results = sp.search(q=query, type="track", limit=26, offset=offset)
+		logger.info("Spotify Playlist Generation complete, queuing songs...")
 
 		tracks = []
 		for track in results["tracks"]["items"]:
 			#pylint: disable=inconsistent-quotes
-			tracks.append(f"{track['name']} {track['artists'][0]['name']}")
+			query = f"{track['name']} {track['artists'][0]['name']}"
+			search_result = await wavelink.Playable.search(query)
+			if search_result:
+				tracks.append(search_result[0])
 
 		if not tracks:
 			msg = "Those filters returned zero tracks, try again."
 			await GeneralFunctions.send_embed_error("Zero Tracks Returned", msg, ctx)
 			logger.warning(f"{query} returned zero results")
-		else:
-			while tracks:
-				item = str(random.choice(tracks))
-				tracks.remove(item)
-				search = await wavelink.Playable.search(query=item, return_first=True)
-				if vc.playing:
-					async with ctx.typing():
-						vc.queue.put(item=search)
-						logger.info(f"Added {search} to queue from Spotify generated playlist")
-				elif vc.queue.is_empty:
-					await vc.play(search)
-					logger.info(f"Playing {search} from Spotify generated playlist")
-				else:
-					logger.error("Error queuing/playing from Spotify generated playlist")
-				count += 1
+			return
 
-			await ctx.send("Finished loading the Spotify playlist. Here are the queued songs:")
-			await Music.queue(self, ctx)
-			logger.info(f"Finished loading {count} songs into the queue from the Spotify generated playlist")
+		if not vc.playing and vc.queue.is_empty:
+			await vc.play(tracks[0])
+			logger.info(f"Playing {tracks[0].title} from Spotify generated playlist")
+			tracks = tracks[1:]
+
+		logger.debug(f"Queuing {len(tracks)} songs from the Spotify generated playlist")
+		await vc.queue.put_wait(tracks)
+		logger.info(f"Finished loading {len(tracks)} songs into the queue from the Spotify generated playlist")
+
+		await ctx.send("Finished loading the Spotify playlist. Here are the queued songs:")
+		await Music.queue(self, ctx)
 
 	@commands.command(aliases=["Lyrics"])
 	@GeneralFunctions.is_connected_to_same_voice()
