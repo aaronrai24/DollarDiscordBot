@@ -43,6 +43,7 @@ class AutoChannelCreation():
 			new_channel = await guild.create_voice_channel(
 				f"{member.display_name}'s Channel",
 				category=category,
+				bitrate=96000,
 				position=0
 			)
 			await new_channel.set_permissions(member, manage_channels=True)
