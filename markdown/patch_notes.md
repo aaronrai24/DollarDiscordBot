@@ -16,6 +16,7 @@
 - Included in the Docker container are images for the bot, the database, and lavalink.
 
 ### Music Improvements
+- **For best audio quality, set your Discord voice channels to 96kbps or higher. [How to set bitrate](https://support.discord.com/hc/en-us/articles/11635925354775-Audio-Bitrate-FAQ)**
 - Added `!lofi` command that generates a lofi playlist of songs to play.
 - Added `!remove (song number)` command to remove a song from the queue.
 - Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
