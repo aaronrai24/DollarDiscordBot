@@ -47,6 +47,7 @@
 - Fixed an issue where `!generateplaylist` would not generate a playlist
 - Migrated from MySQL to PostgreSQL for better performance and scalability.
 - Changed `!help` to `/help` and used a discord.UI.View with buttons to display the help menu.
+- Set Auto Channel Creation to create voice channels at 96kbps instead of 64kbps, to improve audio quality for users.
 
 ### Deprecated Features
 
