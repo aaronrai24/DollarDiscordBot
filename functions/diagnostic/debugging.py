@@ -1,16 +1,162 @@
 """
 DESCRIPTION: Debugging functions reside here
 """
+#pylint: disable=useless-parent-delegation
 from ..common.libraries import (
 	discord, os, commands, threading, traceback, sys, time,
-	psutil, asyncio, requests, json, logging, ADMIN, 
-	MOD, START_TIME, user_usage, GITHUB_TOKEN
+	psutil, asyncio, requests, json, logging, START_TIME, 
+	GITHUB_TOKEN
 )
-from ..common.generalfunctions import(
-	setup_logger, send_embed
-)
+from ..common.generalfunctions import GeneralFunctions
 
-logger = setup_logger("diagnostic")
+logger = GeneralFunctions.setup_logger("diagnostic")
+
+class ReportBugModel(discord.ui.Modal, title="Report Bug"):
+	"""
+	DESCRIPTION: Creates Report Bug Model
+	PARAMETERS: discord.ui.modal - Discord Modal
+	"""
+
+	def __init__(self):
+		super().__init__()
+	
+	bug_title = discord.ui.TextInput(label="Bug Title", placeholder="Enter Bug Title", required=True)
+	bug_description = discord.ui.TextInput(placeholder="Enter a detailed description of the bug", label="Bug Description", required=True)
+
+	async def on_submit(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on submit of Report Bug Model
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		bug_title = self.bug_title.value
+		bug_description = self.bug_description.value
+		author = interaction.user
+		server = interaction.guild
+
+		issue_body = f"Bug report: {bug_description}\n\nSubmitted by: {author}\nServer: {server}"
+		payload = {"title": bug_title, "body": issue_body, "labels": ["bug"]}
+
+		repository = "DollarDiscordBot"
+		owner = "aaronrai24"
+		access_token = GITHUB_TOKEN
+
+		url = f"https://api.github.com/repos/{owner}/{repository}/issues"
+
+		headers = {"Authorization": f"token {access_token}"}
+
+		response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+		if response.status_code == 201:
+			logger.info("Added bug report to GitHub issues")
+			await interaction.response.send_message("Bug report submitted successfully.", ephemeral=True)
+		else:
+			await interaction.response.send_message("Failed to add bug report to GitHub issues.", ephemeral=True)
+			logger.error(f"Failed to add bug report to GitHub issues: {response.text}")
+
+	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+		"""
+		DESCRIPTION: Fires on error of Settings Modal
+		PARAMETERS: discord.Interaction - Discord Interaction
+		"""
+		message = GeneralFunctions.modal_error_check(error)
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
+
+class FeatureRequestModel(discord.ui.Modal, title="Feature Request"):
+	"""
+	DESCRIPTION: Creates Feature Request Model
+	PARAMETERS: discord.ui.modal - Discord Modal
+	"""
+
+	def __init__(self):
+		super().__init__()
+
+	feature_title = discord.ui.TextInput(label="Feature Title", placeholder="Enter Feature Title", required=True)
+	feature_description = discord.ui.TextInput(placeholder="Enter a detailed description of the feature", label="Feature Description", required=True)
+ 
+	async def on_submit(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on submit of Feature Request Model
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		feature_title = self.feature_title.value
+		feature_description = self.feature_description.value
+		author = interaction.user
+		server = interaction.guild
+		
+		issue_body = f"Feature request: {feature_description}\n\nSubmitted by: {author}\nServer: {server}"
+		payload = {"title": feature_title, "body": issue_body, "labels": ["enhancement"]}
+
+		repository = "DollarDiscordBot"
+		owner = "aaronrai24"
+		access_token = GITHUB_TOKEN
+
+		url = f"https://api.github.com/repos/{owner}/{repository}/issues"
+
+		headers = {"Authorization": f"token {access_token}"}
+
+		response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+		if response.status_code == 201:
+			logger.info("Added feature request to GitHub issues")
+			await interaction.response.send_message("Feature request submitted successfully.", ephemeral=True)
+		else:
+			await interaction.response.send_message("Failed to add feature request to GitHub issues.", ephemeral=True)
+			logger.error(f"Failed to add feature request to GitHub issues: {response.text}")
+	
+	async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+		"""
+		DESCRIPTION: Fires on error of Settings Modal
+		PARAMETERS: discord.Interaction - Discord Interaction
+		"""
+		message = GeneralFunctions.modal_error_check(error)
+		await interaction.response.send_message(message, ephemeral=True)
+		logger.error(f"An error occurred: {error}")
+
+class HelpView(discord.ui.View):
+	"""
+	DESCRIPTION: Creates Help View
+	PARAMETERS: discord.ui.View - Discord View
+	"""
+	def __init__(self):
+		super().__init__()
+		self.add_item(MyButton(label="Music", style=discord.ButtonStyle.green, custom_id="music"))
+		self.add_item(MyButton(label="Game", style=discord.ButtonStyle.blurple, custom_id="game"))
+		self.add_item(MyButton(label="Slash", style=discord.ButtonStyle.red, custom_id="slash"))
+
+class MyButton(discord.ui.Button):
+	"""
+	DESCRIPTION: Creates Button for Help View
+	PARAMETERS: discord.ui.Button - Discord Button
+	"""
+
+	async def callback(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Fires on button click
+		PARAMETERS: interaction - Discord Interaction
+		"""
+		dollar = await GeneralFunctions.get_bot_member(interaction.guild, interaction.client)
+		command_type = str(self.custom_id)
+
+		if command_type:
+			await self.send_commands(interaction, command_type, dollar)
+
+	async def send_commands(self, interaction, command_type, dollar):
+		"""
+		DESCRIPTION: Send commands based on command type
+		PARAMETERS: interaction - Discord Interaction, command_type - Command Type, dollar - Dollar Bot
+		"""
+		logger.debug(f"Sending {command_type} commands for user {interaction.user.name}")
+		file_path = os.path.join("markdown", f"{command_type}Commands.md")
+		try:
+			with open(file_path, "r", encoding="utf-8") as file:
+				dollar_commands = file.read()
+				embed = GeneralFunctions.create_embed(f"{command_type.capitalize()} Commands", dollar_commands, dollar)
+				await interaction.response.send_message(embed=embed)
+		except FileNotFoundError:
+			logger.error(f"File {file_path} not found")
+		except Exception as e:
+			logger.error(f"Failed to send commands: {e}")
 
 class Debugging(commands.Cog):
 	"""
@@ -20,290 +166,61 @@ class Debugging(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
-	# /status App command, Check dollar diagnostics, CPU, RAM, Uptime
 	@discord.app_commands.command(name="status", description="Dollar server status, CPU usage, Memory usage, Uptime, etc.")
 	async def status(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Check dollar diagnostics, CPU, RAM, Uptime
+		PARAMETERS: interaction - Discord interaction
+		"""
 		uptime = time.time() - START_TIME
-		uptime_formatted = time.strftime("%H:%M:%S", time.gmtime(uptime))
+		uptime_days = uptime // (24 * 3600)
+		uptime = uptime % (24 * 3600)
+		uptime_hours = uptime // 3600
+		uptime_minutes = (uptime % 3600) // 60
+		uptime_seconds = uptime % 60
+		uptime_formatted = f"{int(uptime_days)}d {int(uptime_hours)}h {int(uptime_minutes)}m {int(uptime_seconds)}s"
 		cpu_percent = psutil.cpu_percent()
 		ram_usage = psutil.virtual_memory().percent
 		response_message = f"Bot is currently online and running smoothly.\n\nUptime: {uptime_formatted}\nCPU Load: {cpu_percent}%\nRAM Usage: {ram_usage}%"
 		await interaction.response.send_message(response_message)
 
-	# /setup App command, setup JOIN HERE and commands text channel automatically
-	@discord.app_commands.command(name="setup", description="Automatically create all requirements to use all of Dollar\"s features")
-	async def setup(self, interaction: discord.Interaction):
-		guild = interaction.guild
-		logger.info(f"/setup used in {guild}, creating requirements")
-
-		# Check if voice channel "JOIN HERE" already exists
-		voice_channel_exists = discord.utils.get(guild.voice_channels, name="JOIN HERE💎")
-		if voice_channel_exists:
-			logger.warning(f"JOIN HERE💎 already exists in {guild}")
-		else:
-			await guild.create_voice_channel("JOIN HERE💎")
-			logger.info(f"Created JOIN HERE💎 in {guild}")
-
-		# Check if text channel "commands" already exists
-		text_channel_exists = discord.utils.get(guild.text_channels, name="commands")
-		if text_channel_exists:
-			logger.warning(f"commands already exists in {guild}")
-		else:
-			await guild.create_text_channel("commands")
-			logger.info(f"Created commands in {guild}")
-		
-		# Check if voice_channel "Shows" already exists
-		show_channel_exists = discord.utils.get(guild.voice_channels, name="Shows📺")
-		if show_channel_exists:
-			logger.warning(f"Shows📺 already exists in {guild}")
-		else:
-			await guild.create_voice_channel("Shows📺")
-			logger.info(f"Created Shows📺 in {guild}")
-	
-		await interaction.response.send_message("Voice channel and text channels created successfully, use !help in the #commands text channel for more info.", ephemeral=True)
-
-	# /reportbug, Submit a bug
 	@discord.app_commands.command(name="reportbug", description="Report a bug to the developer")
-	async def reportbug(self, interaction: discord.Interaction, bug_title: str, bug_description: str):
-		author = interaction.user
-		server = interaction.guild
+	async def reportbug(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Submit a bug
+		PARAMETERS: interaction - Discord interaction
+		"""
+		logger.info(f"Creating Report Bug Model for user {interaction.user.name}")
+		await interaction.response.send_modal(ReportBugModel())
 
-		# Check if user has exceeded rate limit
-		now = time.time()
-		user_info = user_usage[author.id]
-		if now - user_info["timestamp"] < 3600 and user_info["count"] >= 3:
-			await interaction.response.send_message("You have exceeded the rate limit for this command. Please try again later.", ephemeral=True)
-			return
-		
-		# Update user usage information
-		user_info["timestamp"] = now
-		user_info["count"] += 1
-		
-		# Proceed with command as normal
-		#pylint: disable=line-too-long
-		embed = discord.Embed(title="Bug Report", description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {bug_title}\n\nDescription: {bug_description}", color=discord.Color.green())
-		logger.info(f"{author} submitted a bug in {server}")
-
-		# Send the bug report to the developer
-		user = await self.bot.fetch_user("223947980309397506")
-		message = await user.send(embed=embed)
-		await interaction.response.send_message("Bug report submitted successfully!", ephemeral=True)
-
-		# Add reactions for accepting and declining the bug report, as well as bug in progress and completion
-		await message.add_reaction("✅")  # Accept Bug report
-		await message.add_reaction("❌")  # Decline Bug report
-
-		# Create a check function for the reactions
-		def check(reaction, user):
-			return user and str(reaction.emoji) in ["✅", "❌"]
-
-		# Wait for a reaction from the developer
-		try:
-			reaction, user = await self.bot.wait_for("reaction_add", check=check)
-		except asyncio.TimeoutError:
-			await message.reply("The bug report was not accepted or declined in time.", mention_author=False)
-			logger.warning("Developer did not accept/decline bug report, timing out")
-			return
-
-		# Notify the user who submitted the bug report whether it was accepted or declined
-		if str(reaction.emoji) == "✅":
-			user_embed = discord.Embed(title="Bug Report", description=f"Your bug report regarding '{bug_title}' has been accepted!", color=discord.Color.green())
-			# Create the issue payload
-			issue_title = bug_title
-			issue_body = f"Bug report: {bug_description}\n\nSubmitted by: {author}\nServer: {server}"
-			payload = {"title": issue_title, "body": issue_body, "labels": ["bug"]}
-
-			# Define the necessary variables
-			repository = "DollarDiscordBot"
-			owner = "aaronrai24"
-			access_token = GITHUB_TOKEN
-
-			# Define the API endpoint for creating an issue
-			url = f"https://api.github.com/repos/{owner}/{repository}/issues"
-
-			# Add authentication using your access token
-			headers = {"Authorization": f"token {access_token}"}
-
-			# Send the POST request to create the issue
-			response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-			# Check the response status code
-			if response.status_code == 201:
-				logger.info("Added bug report to GitHub issues")
-			else:
-				await message.reply("Failed to add bug report to GitHub issues.", mention_author=False)
-				logger.error(f"Failed to add bug report to GitHub issues: {response.text}")
-
-		else:
-			user_embed = discord.Embed(title="Bug Report", description=f"Your bug report regarding '{bug_title}' has been declined.", color=discord.Color.red())
-		
-		try:
-			await author.send(embed=user_embed)
-			logger.info(f"Sent notification to {author}")
-		except discord.errors.Forbidden:
-			logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
-
-	# /featurerequest, Submit a feature request
 	@discord.app_commands.command(name="featurerequest", description="Submit a feature request to the developer")
-	async def featurerequest(self, interaction: discord.Interaction, feature_title: str, feature_description: str):
-		author = interaction.user
-		server = interaction.guild
-		
-		# Check if user has exceeded rate limit
-		now = time.time()
-		user_info = user_usage[author.id]
-		if now - user_info["timestamp"] < 3600 and user_info["count"] >= 3:
-			await interaction.response.send_message("You have exceeded the rate limit for this command. Please try again later.", ephemeral=True)
-			return
-		
-		# Update user usage information
-		user_info["timestamp"] = now
-		user_info["count"] += 1
-		
-		# Proceed with command as normal
-		#pylint: disable=line-too-long
-		embed = discord.Embed(title="Feature Request", description=f"AUTHOR: {author} DISCORD: {server}\n\nTitle: {feature_title}\n\nDescription: {feature_description}", color=discord.Color.green())
-		logger.info(f"{author} submitted a feature request in {server}")
+	async def featurerequest(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Submit a feature request
+		PARAMETERS: interaction - Discord interaction
+		"""
+		logger.info(f"Creating Feature Request Model for user {interaction.user.name}")
+		await interaction.response.send_modal(FeatureRequestModel())
 
-		# Send the feature request to the developer
-		user = await self.bot.fetch_user("223947980309397506")
-		message = await user.send(embed=embed)
-		await interaction.response.send_message("Feature request submitted successfully!", ephemeral=True)
-
-		# Add reactions for accepting and declining the feature request
-		await message.add_reaction("✅")  # Accept feature request
-		await message.add_reaction("❌")  # Decline feature request
-
-		# Create a check function for the reactions
-		def check(reaction, user):
-			return user and str(reaction.emoji) in ["✅", "❌"]
-
-		# Wait for a reaction from the developer
-		try:
-			reaction, user = await self.bot.wait_for("reaction_add", check=check)
-		except asyncio.TimeoutError:
-			await message.reply("The feature request was not accepted or declined in time.", mention_author=False)
-			logger.warning("Developer did not accept/decline feature request, timing out")
-			return
-		
-		# Notify the user who submitted the feature request whether it was accepted or declined
-		if str(reaction.emoji) == "✅":
-			user_embed = discord.Embed(title="Feature Request", description=f"Your feature request regarding '{feature_title}' has been accepted!", color=discord.Color.green())
-			
-			# Create the issue payload
-			issue_title = feature_title
-			issue_body = f"Feature request: {feature_description}\n\nSubmitted by: {author}\nServer: {server}"
-			payload = {"title": issue_title, "body": issue_body, "labels": ["enhancement"]}  # Add "enhancement" label to the issue
-
-			# Define the necessary variables
-			repository = "DollarDiscordBot"
-			owner = "aaronrai24"
-			access_token = GITHUB_TOKEN
-
-			# Define the API endpoint for creating an issue
-			url = f"https://api.github.com/repos/{owner}/{repository}/issues"
-
-			# Add authentication using your access token
-			headers = {"Authorization": f"token {access_token}"}
-
-			# Send the POST request to create the issue
-			response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-			# Check the response status code
-			if response.status_code == 201:
-				logger.info("Added feature request to GitHub issues")
-			else:
-				await message.reply("Failed to add feature request to GitHub issues.", mention_author=False)
-				logger.error(f"Failed to add feature request to GitHub issues: {response.text}")
-		else:
-			user_embed = discord.Embed(title="Feature Request", description=f"Your feature request regarding '{feature_title}' has been declined.", color=discord.Color.red())
-		
-		try:
-			await author.send(embed=user_embed)
-			logger.info(f"Sent notification to {author}")
-		except discord.errors.Forbidden:
-			logger.warning(f"Failed to send notification to {author} (user has blocked the bot)")
-
-	# /ticket, Open an issue in the mfDiscord(get access to the #issues channel)
-	@discord.app_commands.command(name="ticket", description="Open a issue with the developers when you are having issues with Dollar")
-	async def ticket(self, interaction: discord.Interaction):
-		author = interaction.user
-		server = interaction.guild
-		
-		# Check if user has exceeded rate limit
-		now = time.time()
-		user_info = user_usage[author.id]
-		if now - user_info["timestamp"] < 3600 and user_info["count"] >= 3:
-			await interaction.response.send_message("You have exceeded the rate limit for this command. Please try again later.", ephemeral=True)
-			return
-		
-		# Update user usage information
-		user_info["timestamp"] = now
-		user_info["count"] += 1
-
-		guild_id = 261351089864048645
-		mf_discord = discord.utils.get(self.bot.guilds, id=guild_id)
-		issues_channel = discord.utils.get(mf_discord.text_channels, name="issues")
-
-		if not issues_channel:
-			await interaction.response.send_message("The issues channel could not be found, please try again later.", ephemeral=True)
-			return
-
-		# Create an invite with a 30-minute expiration for the issues channel
-		invite = await issues_channel.create_invite(max_age=1800, unique=True)
-
-		channel = await self.bot.fetch_channel("1117217882070323291")
-		dev_role_id = 1112192013903872100
-		qa_role_id = 1097642643133051032
-
-		dev_role_mention = f"<@&{dev_role_id}>"
-		qa_role_mention = f"<@&{qa_role_id}>"
-
-		await channel.send(f"Issue occurred while using Dollar for {author}. {dev_role_mention}{qa_role_mention} Please grant {author} access to view this channel.")
-		# Send the invite as a direct message to the user
-		try:
-			await author.send(f"Here's your invite link to the #issues channel: {invite}")
-			await interaction.response.send_message("An invite link has been sent to your DMs.", ephemeral=True)
-			logger.info(f"Issue likely occured in {server}, author: {author}")
-		except discord.Forbidden:
-			await interaction.response.send_message("I cannot send you the invite link because you have disabled DMs.", ephemeral=True)
-			logger.warning(f"{author} has likely disabled DMs" )
+	@discord.app_commands.command(name="help", description="See available commands for Dollar")
+	async def help(self, interaction: discord.Interaction):
+		"""
+		DESCRIPTION: Show available commands
+		PARAMETERS: interaction - Discord interaction
+		"""
+		logger.info(f"Creating Help View for user {interaction.user.name}")
+		await interaction.response.send_message("Which commands?", view=HelpView())
 
 	@commands.command()
-	async def help(self, ctx, category=None):
-
-		if category is None:
-			desc = "Available categories: music, game, mywatchlist. Use either !help music or !help game or !help mywatchlist"
-			await send_embed("Which commands?", "dollar3.png", desc, ctx)
-		elif category.lower() == "music":
-			file_path = os.path.join("markdown", "musicCommands.md")
-			if os.path.isfile(file_path):
-				with open(file_path, "r", encoding="utf-8") as file:
-					bot_commands = file.read()
-			await send_embed("Music Commands", "dollar3.png", bot_commands, ctx)
-		elif category.lower() == "game":
-			file_path = os.path.join("markdown", "gameCommands.md")
-			if os.path.isfile(file_path):
-				with open(file_path, "r", encoding="utf-8") as file:
-					game_commands = file.read()
-			await send_embed("Music Commands", "dollar3.png", game_commands, ctx)
-		elif category.lower() == "mywatchlist":
-			file_path = os.path.join("markdown", "watchlistCommands.md")
-			if os.path.isfile(file_path):
-				with open(file_path, "r", encoding="utf-8") as file:
-					watchlist_commands = file.read()
-			await send_embed("Music Commands", "dollar3.png", watchlist_commands, ctx)
-		else:
-			await ctx.send("Invalid category. Available categories: music, game, mywatchlist")
-
-	# Admin only, see Dollar"s current threads
-	@commands.command()
-	@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
+	@commands.is_owner()
 	async def threaddump(self, ctx):
+		"""
+		DESCRIPTION: See Dollar's current threads
+		PARAMETERS: ctx - Discord Context
+		"""
 		logger.info("START THREAD DUMP")
 		thread_list = threading.enumerate()
 
-		# Find the highest existing thread dump number
 		existing_dumps = [file for file in os.listdir() if file.startswith("dollar-thread-dump-")]
 		max_dump_number = 0
 		for dump in existing_dumps:
@@ -316,7 +233,6 @@ class Debugging(commands.Cog):
 		dump_number = max_dump_number + 1
 		dump_file_name = f"dollar-thread-dump-{dump_number}.txt"
 
-		# Check if the dump file with the same number already exists
 		while dump_file_name in existing_dumps:
 			dump_number += 1
 			dump_file_name = f"dollar-thread-dump-{dump_number}.txt"
@@ -337,10 +253,13 @@ class Debugging(commands.Cog):
 
 		logger.info("FINISH THREAD DUMP")
 
-	# Admin and mod only, see Dollar"s current logs
 	@commands.command()
-	@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
+	@commands.is_owner()
 	async def logs(self, ctx):
+		"""
+		DESCRIPTION: See Dollar's current logs
+		PARAMETERS: ctx - Discord Context
+		"""
 		log_file_name = "discord.log"
 		log_file_path = os.path.join(os.getcwd(), log_file_name)
 
@@ -353,10 +272,13 @@ class Debugging(commands.Cog):
 			log_file = discord.File(file, filename=log_file_name)
 			await channel.send(file=log_file)
 	
-	# Set logging to certain level
 	@commands.command()
-	@commands.check_any(commands.has_role(ADMIN), commands.has_role(MOD))
+	@commands.is_owner()
 	async def logging(self, ctx, level):
+		"""
+		DESCRIPTION: Set logging to certain level
+		PARAMETERS: ctx - Discord Context, level - logging level
+		"""
 		level = getattr(logging, level.upper(), None)
 		if level is None:
 			await ctx.send("Invalid logging level provided.")
@@ -372,6 +294,10 @@ class Debugging(commands.Cog):
 	@commands.command()
 	@commands.is_owner()
 	async def shutdown(self, ctx):
+		"""
+		DESCRIPTION: Shut down Dollar
+		PARAMETERS: ctx - Discord Context
+		"""
 		try:
 			logger.info("Starting shut down...")
 			await ctx.send(f"{ctx.author.mention} Dollar is shutting down...")

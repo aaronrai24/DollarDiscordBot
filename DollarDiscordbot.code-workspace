@@ -1,0 +1,36 @@
+{
+    "folders": [
+        {
+            "name": "Admin",
+            "path": "./functions/admin"
+        },
+        {
+            "name": "Common",
+            "path": "./functions/common"
+        },
+        {
+            "name": "Diagnostic",
+            "path": "./functions/diagnostic"
+        },
+        {
+            "name": "Game",
+            "path": "./functions/game"
+        },
+        {
+            "name": "Music",
+            "path": "./functions/music"
+        },
+        {
+            "name": "Notifications",
+            "path": "./functions/notifications"
+        },
+        {
+            "name": "Queries",
+            "path": "./functions/queries"
+        },
+        {
+            "name": "Root",
+            "path": "."
+        }
+    ]
+}

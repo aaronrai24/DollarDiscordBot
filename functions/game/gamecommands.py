@@ -5,11 +5,9 @@ DESCRIPTION: game commands reside here
 from ..common.libraries import(
 	discord, commands, requests, os, TRACKER_GG, RIOT_TOKEN
 )
-from ..common.generalfunctions import(
-	setup_logger
-)
+from ..common.generalfunctions import GeneralFunctions
 
-logger = setup_logger("game-commands")
+logger = GeneralFunctions.setup_logger("game")
 
 class GameCommands(commands.Cog):
 	"""
@@ -19,6 +17,7 @@ class GameCommands(commands.Cog):
 	
 	def __init__(self, bot):
 		self.bot = bot
+		self.general_functions = GeneralFunctions()
 	
 	# Retreive CSGO Stats
 	@commands.command(aliases=["cs"])
