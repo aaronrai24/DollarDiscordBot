@@ -144,7 +144,6 @@ class Settings(lib.commands.Cog):
 		self.bot = bot
 		self.mydb = bot.mydb
 
-	@GeneralFunctions.is_guild_owner_interaction()
 	@lib.discord.app_commands.command(name="dollarsettings", description="Change Dollar Settings")
 	async def settings(self, interaction: lib.discord.Interaction):
 		"""
@@ -152,7 +151,11 @@ class Settings(lib.commands.Cog):
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
 		logger.info(f"Creating Settings Modal for user: {interaction.user.name}")
-		await interaction.response.send_modal(SettingsModal(self.mydb))
+		is_guild_owner = GeneralFunctions.is_guild_owner_interaction()
+		if not is_guild_owner:
+			await interaction.response.send_message("You must be the server owner to change settings", ephemeral=True)
+		else:
+			await interaction.response.send_modal(SettingsModal(self.mydb))
 
 	@lib.discord.app_commands.command(name="updateuserinfo", description="Update Your User Information")
 	async def userinformation(self, interaction: lib.discord.Interaction):
