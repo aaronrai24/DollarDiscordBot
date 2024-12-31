@@ -4,6 +4,7 @@ services:
     container_name: dollar
     depends_on:
       - db
+      - lavalink
     volumes:
       - ./discord.log:/app/discord.log
     networks:

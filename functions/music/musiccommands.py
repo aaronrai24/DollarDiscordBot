@@ -25,6 +25,18 @@ class Music(commands.Cog):
 #------------------------------------------------------------------------------------------------
 # Listeners
 	@commands.Cog.listener()
+	async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
+		logger.info(f"Node {payload.node!r} is ready!")
+
+	@commands.Cog.listener()
+	async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
+		logger.error(f"An error occurred while playing a track: {payload.exception}")
+
+	@commands.Cog.listener()
+	async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
+		logger.warning(f"Track {payload.track!r} got stuck")
+
+	@commands.Cog.listener()
 	async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
 		track: wavelink.Playable = payload.track
 		global artist

@@ -314,12 +314,17 @@ async def on_message(message):
 		if msg.startswith("!"):
 			logger.info(f"Bot command entered. Command: {msg} | Author: {author} Guild: {guild}")
 			await client.process_commands(message)
+
 	elif msg.startswith("!clear"):
 		await client.process_commands(message)
 		logger.info(f"{author} used !clear in Guild: {guild}")
+
 	elif msg.startswith("!"):
 		logger.info(f"Command entered in wrong channel, deleting: {msg} in Guild: {guild}")
-		await author.send(f"Please use the {guild_text_channel} channel to enter commands in {guild}, thanks!")
+		if guild_text_channel:
+			await author.send(f"Please use the {guild_text_channel} channel to enter commands in {guild}, thanks!")
+		else:
+			await author.send("Please use the commands channel to enter commands, thanks!")
 		await message.delete(delay=1)
 
 @client.event
