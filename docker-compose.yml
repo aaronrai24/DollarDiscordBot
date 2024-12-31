@@ -1,0 +1,93 @@
+services:
+  main:
+    build: .
+    container_name: dollar
+    depends_on:
+      - db
+      - lavalink
+    volumes:
+      - ./discord.log:/app/discord.log
+    networks:
+      - dollar
+    environment:
+      TOKEN: ${TOKEN}
+      GENIUSTOKEN: ${GENIUSTOKEN}
+      LAVALINK_TOKEN: ${LAVALINK_TOKEN}
+      LAVALINK_EMAIL: ${LAVALINK_EMAIL}
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD}
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      TRACKERGG: ${TRACKERGG}
+      RIOTTOKEN: ${RIOTTOKEN}
+      GHUBTOKEN: ${GHUBTOKEN}
+      DB_USER: ${DB_USER}
+      DB_PW: ${DB_PW}
+      DB_SCHEMA: ${DB_SCHEMA}
+      PATCHES_CHANNEL: ${PATCHES_CHANNEL}
+      CASH: ${CASH}
+      TZ: America/Los_Angeles
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      _JAVA_OPTIONS: "-Xmx1G"
+      LAVALINK_SERVER_PASSWORD: ${LAVALINK_TOKEN}
+      TZ: "America/Los_Angeles"
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+      - ./plugins:/opt/Lavalink/plugins
+      - ./logs/spring.log:/app/logs/spring.log
+    user: "1000:1000"
+    networks:
+      - dollar
+    ports:
+      - "2333:2333"
+
+  db:
+    image: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PW}
+      POSTGRES_DB: ${DB_SCHEMA}
+      TZ: "America/Los_Angeles"
+    volumes:
+    - pgdata:/var/lib/postgresql/data
+    - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dollar
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: P@ssword1!
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - dollar
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  pgadmin_data:
+
+networks:
+  dollar:
+    name: dollar

@@ -19,7 +19,7 @@ Include screenshots or animated GIFs demonstrating the changes, especially for U
 
 - [ ] I have read and followed the project's contributing guidelines.
 - [ ] My code follows the coding style of the project.
-- [ ] I have ran `pylint` on any modified or new files.
+- [ ] I have ran `pylint bot.py` and `pylint functions` to follow coding guidelines.
 - [ ] I have updated the documentation (if applicable).
 - [ ] The code is ready for review.
 

@@ -1,9 +1,10 @@
 beautifulsoup4
 discord.py
-dotenv
+lyricsgenius
 mysql-connector-python
 pandas
 psutil
+psycopg2
 python-dotenv
 requests
 redis
