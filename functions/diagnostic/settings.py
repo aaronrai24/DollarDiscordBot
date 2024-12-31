@@ -150,7 +150,7 @@ class Settings(lib.commands.Cog):
 		DESCRIPTION: Creates Settings command
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		logger.info(f"Creating Settings Modal for user: {interaction.user.name}")
+		logger.debug(f"Creating Settings Modal for user: {interaction.user.name}")
 		is_guild_owner = GeneralFunctions.is_guild_owner_interaction()
 		if not is_guild_owner:
 			await interaction.response.send_message("You must be the server owner to change settings", ephemeral=True)
@@ -163,7 +163,7 @@ class Settings(lib.commands.Cog):
 		DESCRIPTION: Creates UserInfo command
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
-		logger.info(f"Creating UserInfo Modal for: {interaction.user.name}")
+		logger.debug(f"Creating UserInfo Modal for: {interaction.user.name}")
 		await interaction.response.send_modal(UserInfoModal(self.mydb))
 
 async def setup(bot):

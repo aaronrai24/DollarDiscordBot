@@ -1,6 +1,5 @@
 """
-DESCRIPTION: Main class that creates UnfilteredBot
-All client events should be written here.
+DESCRIPTION: Creates UnfilteredBot, loads exts, connects to db, runs tasks, and client events. Location of the main bot loop.
 """
 from functions import GeneralFunctions
 from functions import AutoChannelCreation
@@ -11,9 +10,12 @@ import functions.common.libraries as lib
 lib.load_dotenv()
 
 exts: list = [
-		"functions.diagnostic.debugging", "functions.game.gamecommands", 
-		"functions.music.musiccommands", "functions.admin.admin",
-		"functions.queries.queries", "functions.diagnostic.settings",
+		"functions.diagnostic.debugging", 
+		"functions.game.gamecommands",
+		"functions.music.musiccommands",
+		"functions.admin.admin",
+		"functions.queries.queries",
+		"functions.diagnostic.settings",
 		"functions.notifications.push_notifications"
 	]
 
@@ -81,7 +83,7 @@ async def connect_nodes():
 
 #------------------------------------------------------------------------------------------------
 # Tasks
-#------------------------------------------------------------------------------------------------
+
 @lib.tasks.loop(seconds=60)
 async def validate_db():
 	"""
@@ -176,7 +178,7 @@ async def on_guild_join(guild):
 	DESCRIPTION: Create voice channel "JOIN HERE" and text channel "commands"
 	PARAMETERS: guild - Discord Guild
 	"""
-	logger.info(f"Joined {guild.name} ({guild.id})")
+	logger.info(f"Joined {guild.name} ({guild.id}), owner: {guild.owner}")
 	user_exists = queries.check_if_user_exists(str(guild.owner.name))
 	if user_exists is None:
 		queries.add_user_to_db(guild.owner.id, guild.owner.name)
@@ -190,13 +192,12 @@ async def on_guild_remove(guild):
 	DESCRIPTION: Delete voice channel "JOIN HERE" and text channel "commands"
 	PARAMETERS: guild - Discord Guild
 	"""
-	logger.info(f"Left guild: {guild.name} ({guild.id})")
 	queries.remove_guild_from_db(guild.name)
 	app_info = await client.application_info()
 	owner = app_info.owner
-	msg = f"""Damn, I got kicked from {guild.name}, was I not good enough? 😢 
-		If im missing features please alert my devs using `/featurerequest`"""
+	msg = f"Removed from {guild.name}, any data associated with this guild has been removed. If im missing features please alert my devs using `/featurerequest`"
 	await owner.send(msg)
+	logger.info(f"Left guild: {guild.name} ({guild.id}), owner: {guild.owner}")
 
 @client.event
 async def on_member_join(member):
@@ -231,7 +232,7 @@ async def on_member_remove(member):
 	if channel is not None:
 		try:
 			await channel.send(f"{member.mention} has left {guild.name}. Bye Felicia")
-			queries.remove_user_from_db(str(member))
+			# queries.remove_user_from_db(str(member)) #TODO: Evaluate if this is necessary
 			logger.info(f"Sent leave message to {member} in {guild}")
 		except lib.discord.Forbidden:
 			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")
@@ -270,7 +271,7 @@ async def on_raw_reaction_add(payload):
 
 	#NOTE: Remove subscription to game
 	elif reaction == "🔕" and int(channel_id) == int(lib.PATCHES_CHANNEL):
-		logger.info(f"{user_name} reacted with {reaction} to {game_name}")
+		logger.debug(f"{user_name} reacted with {reaction} to {game_name}")
 		game_result = queries.check_if_game_exists(game_name)
 		user_result = queries.check_if_user_exists(user_name)
 
@@ -346,7 +347,11 @@ async def on_voice_state_update(member, before, after):
 		logger.info(f"{member} joined {after.channel} in {guild}")
 
 	if before.channel != after.channel:
-		#NOTE: User moved channels
+
+		if before.channel and after.channel:
+			#NOTE: User moved channels
+			logger.info(f"{member} moved from {before.channel} to {after.channel} in {guild}")
+
 		if after.channel == join_channel:
 			try:
 				logger.debug("Checking for hanging channels...")
@@ -355,7 +360,7 @@ async def on_voice_state_update(member, before, after):
 				pass
 			finally:
 				await AutoChannelCreation.create_personal_channel(member, join_channel)
-		elif before.channel:
+		elif before.channel and not after.channel:
 			logger.info(f"{member} left {before.channel} in {guild}")
 			await AutoChannelCreation.handle_channel_leave(before.channel)
 

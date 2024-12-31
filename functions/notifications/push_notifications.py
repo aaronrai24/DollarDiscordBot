@@ -28,11 +28,14 @@ async def get_user_info(interaction: lib.discord.Interaction, user: lib.discord.
 	DESCRIPTION: Gets user information
 	PARAMETERS: interaction - Discord Interaction, user - Discord Member
 	"""
+	created_at = user.created_at.strftime("%B %d, %Y at %I:%M %p")
+	joined_at = user.joined_at.strftime("%B %d, %Y at %I:%M %p")
+
 	#pylint: disable=inconsistent-quotes
 	msg = (f"User: {user.name}\n"
 		   f"Preferred Name: {user.display_name}\n"
-		   f"Created Their Account: {user.created_at}\n"
-		   f"Joined This Discord: {user.joined_at}\n"
+		   f"Created Their Account: {created_at}\n"
+		   f"Joined This Discord: {joined_at}\n"
 		   f"Roles: {', '.join([role.name for role in user.roles])}")
 	
 	embed = GeneralFunctions.create_embed(
