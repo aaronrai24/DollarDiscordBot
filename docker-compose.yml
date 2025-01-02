@@ -39,7 +39,7 @@ services:
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml
       - ./plugins:/opt/Lavalink/plugins
-    entrypoint: ["/bin/sh", "-c", "rm -rf /opt/Lavalink/application.yml && exec java -jar Lavalink.jar"]
+    entrypoint: ["/bin/sh", "-c", "sudo rm -rf /opt/Lavalink/application.yml && exec java -jar Lavalink.jar"]
     user: "1000:1000"
     networks:
       - dollar
