@@ -3,10 +3,10 @@
 
 <p align="center">
     <img src="https://img.shields.io/badge/author-aaronrai24-blue" alt="Author Badge">
-    <img src="https://img.shields.io/badge/version-2.0.0-g" alt="Version Badge">
+    <img src="https://img.shields.io/badge/version-2.0.1-purple" alt="Version Badge">
     <img src="https://img.shields.io/badge/PyLint-Passing-brightgreen" alt="Pylint Status Badge">
     <img src="https://github.com/aaronrai24/DollarDiscordBot/actions/workflows/runner.yml/badge.svg " alt="CI Badge">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="License Badge">
+    <img src="https://img.shields.io/badge/license-MIT-red" alt="License Badge">
 </p>
 
 > [!IMPORTANT]  
