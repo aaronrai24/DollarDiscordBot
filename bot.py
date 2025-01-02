@@ -101,7 +101,7 @@ async def on_ready():
 	"""
 	client.loop.create_task(connect_nodes())
 	validate_db.start()
-	# await GeneralFunctions.send_patch_notes(client)
+	await GeneralFunctions.send_patch_notes(client)
 	for guild in client.guilds:
 		lib.guild_text_channels[str(guild)] = queries.get_guilds_preferred_text_channel(str(guild))
 		lib.guild_voice_channels[str(guild)] = queries.get_guilds_preferred_voice_channel(str(guild))
