@@ -5,8 +5,6 @@ services:
     depends_on:
       - db
       - lavalink
-    volumes:
-      - ./discord.log:/app/discord.log
     networks:
       - dollar
     environment:
