@@ -39,7 +39,6 @@ services:
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml
       - ./plugins:/opt/Lavalink/plugins
-      - ./logs/spring.log:/app/logs/spring.log
     user: "1000:1000"
     networks:
       - dollar
