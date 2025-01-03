@@ -15,7 +15,7 @@ When you issue the `!lyrics` command, **Dollar** will perform a search on **Geni
 - Once the lyrics are found, the bot sends them to the Discord chat in a neatly formatted message.
 - If the song’s lyrics are not found, the bot will inform the user that it couldn't retrieve the lyrics.
 
-### Usage:
+### Usage
 
 ```bash
 !lyrics
