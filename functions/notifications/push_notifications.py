@@ -30,6 +30,11 @@ async def get_user_info(interaction: lib.discord.Interaction, user: lib.discord.
 	"""
 	created_at = user.created_at.strftime("%B %d, %Y at %I:%M %p")
 	joined_at = user.joined_at.strftime("%B %d, %Y at %I:%M %p")
+		
+	time_zone = "pacific" #TODO: Get time zone from database
+	if time_zone:
+		created_at = GeneralFunctions.convert_time_zone(created_at, time_zone)
+		joined_at = GeneralFunctions.convert_time_zone(joined_at, time_zone)
 
 	#pylint: disable=inconsistent-quotes
 	msg = (f"User: {user.name}\n"

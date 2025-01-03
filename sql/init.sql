@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS dollar.users (
     discord_id VARCHAR(255),
     username VARCHAR(255),
     home_address VARCHAR(255),
-    work_address VARCHAR(255)
+    work_address VARCHAR(255),
+    time_zone VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS dollar.games (

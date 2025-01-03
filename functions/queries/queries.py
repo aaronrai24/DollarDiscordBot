@@ -41,7 +41,7 @@ class Queries(commands.Cog):
 		return wrapper
 
 	@handle_exceptions
-	def add_user_to_db(self, user_id, user_name, home_address=None, work_address=None):
+	def add_user_to_db(self, user_id, user_name, home_address=None, work_address=None, time_zone=None):
 		"""
 		DESCRIPTION: Adds a user to the database
 
@@ -49,12 +49,13 @@ class Queries(commands.Cog):
 					user_name (str) - Discord user name
 					home_address (str, OPT) - Home address
 					work_address (str, OPT) - Work address
+					timezone (str, OPT) - Timezone
 		"""
 		cursor = self.mydb.cursor()
 		logger.debug("Executing query to add user")
 		cursor.execute(
-			"INSERT INTO users (discord_id, username, home_address, work_address) VALUES (%s, %s, %s, %s)",
-			(user_id, user_name, home_address, work_address)
+			"INSERT INTO users (discord_id, username, home_address, work_address, time_zone) VALUES (%s, %s, %s, %s, %s)",
+			(user_id, user_name, home_address, work_address, time_zone)
 		)
 		self.mydb.commit()
 		logger.debug("Query to add user executed")
@@ -195,6 +196,21 @@ class Queries(commands.Cog):
 		cursor.execute("UPDATE users SET work_address = %s WHERE username = %s", (work_address, user_name))
 		self.mydb.commit()
 		logger.debug("Query to update users work address executed")
+
+	@handle_exceptions
+	def update_users_time_zone(self, user_name, time_zone):
+		"""
+		DESCRIPTION: Updates a users time zone in the database
+
+		PARAMETERS: self.mydb (obj) - Database connection
+					user_name (str) - Discord user name
+					time_zone (str) - Time zone
+		"""
+		cursor = self.mydb.cursor()
+		logger.debug("Executing query to update users time zone")
+		cursor.execute("UPDATE users SET time_zone = %s WHERE username = %s", (time_zone, user_name))
+		self.mydb.commit()
+		logger.debug("Query to update users time zone executed")
 	
 	@handle_exceptions
 	def get_users_home_address(self, user_name):
@@ -224,6 +240,21 @@ class Queries(commands.Cog):
 		cursor.execute("SELECT work_address FROM users WHERE username = %s", (user_name,))
 		result = cursor.fetchone()
 		logger.debug("Query to get users work address executed")
+		return result
+	
+	@handle_exceptions
+	def get_users_time_zone(self, user_name):
+		"""
+		DESCRIPTION: Gets a users time zone from the database
+
+		PARAMETERS: self.mydb (obj) - Database connection
+					user_name (str) - Discord user name
+		"""
+		cursor = self.mydb.cursor()
+		logger.debug("Executing query to get users time zone")
+		cursor.execute("SELECT time_zone FROM users WHERE username = %s", (user_name,))
+		result = cursor.fetchone()
+		logger.debug("Query to get users time zone executed")
 		return result
 	
 	@handle_exceptions
