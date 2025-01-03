@@ -10,7 +10,7 @@
 </p>
 
 > [!IMPORTANT]  
-> Docusarus coming soon! Better documentation for developers and users will be made available, including a full guide on how to use Dollar as well as how to contribute to the project.
+> Docusarus available at our github([Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)).
 
 Dollar: Your all-in-one Discord companion! Powered by Lavalink, Dollar not only lets you play music from popular websites, but goes above and beyond. Dollar acts as a versatile moderator, creating personal voice channels and enforcing proper command usage.
 
@@ -55,9 +55,6 @@ Linux:
 ```bash
 ./scripts/rebuild-and-prune.sh
 ```
-
-> [!WARNING]  
-> The `logs/` directory and `plugins/` directory may need to be created by the developer for the lavalink container to run properly.
 
 ### API Auth Keys
 
