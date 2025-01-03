@@ -1,0 +1,30 @@
+# `/updateuserinfo`
+
+The `/updateuserinfo` command allows users to update their personal information within Dollar. This includes important details such as home and work addresses, which can be used for features like weather updates and estimated time of arrival (ETA) to work notifications.
+
+## Purpose
+- The `/updateuserinfo` command is designed to allow users to keep their personal information up to date, ensuring that any location-based features (such as weather or ETA notifications) function correctly.
+- This command is helpful for users who want to receive accurate and personalized notifications related to their location.
+
+## How It Works
+When the `/updateuserinfo` command is issued, users are prompted to provide the following details:
+- **Home Address**: The user's home address, which is used to fetch weather data and other location-based information.
+- **Work Address**: The user's work address, which is used to calculate ETA to work notifications, helping users stay informed about when they need to leave to arrive on time.
+
+Once the user provides their information, Dollar updates their profile with the new details. This ensures that location-based notifications are personalized to the user's current addresses.
+
+### Usage
+To use the `/updateuserinfo` command:
+
+```bash
+/updateuserinfo
+```
+
+The user will then be prompted to provide their home and work addresses. The user can respond to the prompts with the required information.
+
+### Important Notes
+
+- The `/updateuserinfo` command is designed to update the user's personal information within Dollar. This information is used to provide personalized location-based notifications.
+- Users should ensure that they provide accurate home and work addresses to receive accurate notifications.
+- The `/updateuserinfo` command is a key feature of Dollar that enhances the user experience by providing relevant and timely information based on the user's location.
+- All user information is stored securely and is only used for the purpose of providing location-based notifications within Dollar.
