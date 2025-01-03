@@ -1,5 +1,3 @@
-## Patch: 2.0.1
-
 - After a slight rough start with the 2.0.0 release, 2.0.1 is here to fix some of the issues that were present in the previous release. 
 
 ### Docusarus
@@ -11,4 +9,4 @@
 ### Fixes and Enhancements
 
 - Fixed an issue where user ids were not being stored in the database when adding a user to the database from `/updateuserinfo`
-- Added user preffered timezone to the database, now when updating user info, you can set your timezone and any time based commands/info will be displayed in your timezone
+- Added user prefered timezone to the database, now when updating user info, you can set your timezone and any time based commands/info will be displayed in your timezone
