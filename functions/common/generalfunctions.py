@@ -186,9 +186,9 @@ class GeneralFunctions():
 			return converted_time.strftime("%B %d, %Y at %I:%M %p")
 			
 		except ValueError:
-			return f"Error: Invalid time format. Expected format: Month DD, YYYY at HH:MM AM/PM"
+			return "Error: Invalid time format. Expected format: Month DD, YYYY at HH:MM AM/PM"
 		except KeyError:
-			return f"Error: Invalid timezone. Use Eastern, Central, Mountain, or Pacific"
+			return "Error: Invalid timezone. Use Eastern, Central, Mountain, or Pacific"
 
 	async def send_patch_notes(client):
 		"""

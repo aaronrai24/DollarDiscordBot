@@ -41,6 +41,7 @@ class Queries(commands.Cog):
 		return wrapper
 
 	@handle_exceptions
+	#pylint: disable=too-many-positional-arguments
 	def add_user_to_db(self, user_id, user_name, home_address=None, work_address=None, time_zone=None):
 		"""
 		DESCRIPTION: Adds a user to the database
