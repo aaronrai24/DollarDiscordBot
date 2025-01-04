@@ -121,7 +121,8 @@ class HelpView(discord.ui.View):
 	def __init__(self):
 		super().__init__()
 		self.add_item(MyButton(label="Music", style=discord.ButtonStyle.green, custom_id="music"))
-		self.add_item(MyButton(label="Game", style=discord.ButtonStyle.blurple, custom_id="game"))
+		# self.add_item(MyButton(label="Game", style=discord.ButtonStyle.blurple, custom_id="game")) #TODO: Fix Game Commands and uncomment
+		self.add_item(MyButton(label="Context Menu", style=discord.ButtonStyle.blurple, custom_id="context"))
 		self.add_item(MyButton(label="Slash", style=discord.ButtonStyle.red, custom_id="slash"))
 
 class MyButton(discord.ui.Button):
@@ -139,6 +140,7 @@ class MyButton(discord.ui.Button):
 		command_type = str(self.custom_id)
 
 		if command_type:
+			await interaction.message.edit(view=None)
 			await self.send_commands(interaction, command_type, dollar)
 
 	async def send_commands(self, interaction, command_type, dollar):

@@ -3,14 +3,14 @@
 
 <p align="center">
     <img src="https://img.shields.io/badge/author-aaronrai24-blue" alt="Author Badge">
-    <img src="https://img.shields.io/badge/version-2.0.0-g" alt="Version Badge">
+    <img src="https://img.shields.io/badge/version-2.0.1-purple" alt="Version Badge">
     <img src="https://img.shields.io/badge/PyLint-Passing-brightgreen" alt="Pylint Status Badge">
     <img src="https://github.com/aaronrai24/DollarDiscordBot/actions/workflows/runner.yml/badge.svg " alt="CI Badge">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="License Badge">
+    <img src="https://img.shields.io/badge/license-MIT-red" alt="License Badge">
 </p>
 
 > [!IMPORTANT]  
-> Docusarus coming soon! Better documentation for developers and users will be made available, including a full guide on how to use Dollar as well as how to contribute to the project.
+> Docusarus available at our github([Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)).
 
 Dollar: Your all-in-one Discord companion! Powered by Lavalink, Dollar not only lets you play music from popular websites, but goes above and beyond. Dollar acts as a versatile moderator, creating personal voice channels and enforcing proper command usage.
 
@@ -55,9 +55,6 @@ Linux:
 ```bash
 ./scripts/rebuild-and-prune.sh
 ```
-
-> [!WARNING]  
-> The `logs/` directory and `plugins/` directory may need to be created by the developer for the lavalink container to run properly.
 
 ### API Auth Keys
 

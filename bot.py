@@ -74,11 +74,17 @@ async def connect_nodes():
 	"""
 	await client.wait_until_ready()
 	#NOTE: Connect to Wavelink
-	nodes = [lib.wavelink.Node(uri="http://lavalink:2333", password=LAVALINK_TOKEN, identifier="MAIN", 
-							retries=None, heartbeat=60, inactive_player_timeout=600)]
+	nodes = [lib.wavelink.Node(
+				uri="http://lavalink:2333", 
+				password=LAVALINK_TOKEN, 
+				identifier="MAIN", 
+				retries=None, 
+				heartbeat=60, 
+				inactive_player_timeout=600
+			)]
 	await lib.wavelink.Pool.connect(nodes=nodes, client=client, cache_capacity=100)
 	logger.info(f"Node: <{nodes}> is ready")
-	await client.change_presence(activity=lib.discord.Game(name=" Dollar 2.0! | /help"))
+	await client.change_presence(activity=lib.discord.Game(name=" All The Hits! | /help"))
 	logger.info("=== Dollar is ready ===")
 
 #------------------------------------------------------------------------------------------------
@@ -232,7 +238,6 @@ async def on_member_remove(member):
 	if channel is not None:
 		try:
 			await channel.send(f"{member.mention} has left {guild.name}. Bye Felicia")
-			# queries.remove_user_from_db(str(member)) #TODO: Evaluate if this is necessary
 			logger.info(f"Sent leave message to {member} in {guild}")
 		except lib.discord.Forbidden:
 			logger.warning(f"Could not send message to {channel.name} in {guild.name}. Missing permissions.")

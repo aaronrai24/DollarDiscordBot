@@ -4,8 +4,8 @@ All general functions should be written here.
 """
 
 from .libraries import(
-	discord, logging, commands, wavelink, os, pool, 
-	requests, BeautifulSoup
+	datetime, discord, logging, commands, wavelink, os, 
+	pool, pytz, requests, BeautifulSoup
 )
 
 class CustomPlayer(wavelink.Player):
@@ -160,6 +160,36 @@ class GeneralFunctions():
 			logger.error(f"Error validating connection: {error}")
 			return False
 
+	def convert_time_zone(time_str, time_zone):
+		"""
+		Convert the time to the specified timezone.
+
+		Parameters:
+		- time_str (str): The time to convert (format: "Month DD, YYYY at HH:MM AM/PM")
+		- time_zone (str): The timezone to convert to (Eastern/Central/Mountain/Pacific)
+
+		Returns:
+		- str: The converted time in the same format
+		"""
+		timezone_map = {
+			"eastern": "America/New_York",
+			"central": "America/Chicago",
+			"mountain": "America/Denver",
+			"pacific": "America/Los_Angeles"
+		}
+
+		try:
+			time_obj = datetime.strptime(time_str, "%B %d, %Y at %I:%M %p")
+			target_tz = pytz.timezone(timezone_map[time_zone.lower()])
+			utc_time = pytz.utc.localize(time_obj)
+			converted_time = utc_time.astimezone(target_tz)
+			return converted_time.strftime("%B %d, %Y at %I:%M %p")
+			
+		except ValueError:
+			return "Error: Invalid time format. Expected format: Month DD, YYYY at HH:MM AM/PM"
+		except KeyError:
+			return "Error: Invalid timezone. Use Eastern, Central, Mountain, or Pacific"
+
 	async def send_patch_notes(client):
 		"""
 		Send the latest patch notes to the system channel of each guild the bot is a member of.
@@ -186,7 +216,7 @@ class GeneralFunctions():
 						desc = file.read()
 
 				embed = discord.Embed(
-					title="Patch: 2.0.0",
+					title="Patch: 2.0.1",
 					url="https://github.com/aaronrai24/DollarDiscordBot",
 					description=desc,
 					colour=discord.Color.green()
