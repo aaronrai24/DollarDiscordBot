@@ -38,13 +38,14 @@ class AutoChannelCreation():
 
 		guild = member.guild
 		category = join_channel.category
+		trigger_channel_pos = join_channel.position
 
 		async with lock_channel(join_channel):
 			new_channel = await guild.create_voice_channel(
 				f"{member.display_name}'s Channel",
 				category=category,
 				bitrate=96000,
-				position=0
+				position=trigger_channel_pos
 			)
 			await new_channel.set_permissions(member, manage_channels=True)
 			lib.created_channels.add(new_channel.id)
