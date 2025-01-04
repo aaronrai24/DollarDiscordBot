@@ -17,3 +17,7 @@
 - `!shuffle`  - Shuffles queue
 - `!skip`  - Skips current song
 - `!swap` (int value) (int value)  - Swaps two songs in queue
+
+### More Detailed Documentation Available
+
+- [Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)

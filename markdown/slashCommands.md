@@ -5,3 +5,7 @@
 - `/reportbug` - Report a bug to the developers.
 - `/status` - Displays the current status of the server, including CPU, Memory, and uptime.
 - `/updateuserinfo` - Update your user information, like home address, and work address to weather/eta to work push notifications.
+
+### More Detailed Documentation Available
+
+- [Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)

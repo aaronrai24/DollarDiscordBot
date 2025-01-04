@@ -18,8 +18,8 @@ class GameCommands(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 		self.general_functions = GeneralFunctions()
-	
-	# Retreive CSGO Stats
+
+	@commands.has_role("QA")
 	@commands.command(aliases=["cs"])
 	async def csgo(self, ctx, player_id):
 		url = f"https://public-api.tracker.gg/v2/csgo/standard/profile/steam/{player_id}"
@@ -57,7 +57,7 @@ class GameCommands(commands.Cog):
 			logger.error(f"Failed to retrieve CSGO stats for player: {player_id}")
 			logger.warning(response)
 
-	# Retreive Specifc Apex Stats, filters can be weapon, gameMode, mapPool
+	@commands.has_role("QA")
 	@commands.command(aliases=["Apex"])
 	async def apex(self, ctx, player_id):
 		
@@ -101,6 +101,7 @@ class GameCommands(commands.Cog):
 			logger.error(f"Failed to retrieve Apex stats for player: {player_id}")
 			logger.warning(response)
 
+	@commands.has_role("QA")
 	@commands.command(aliases=["lol", "league"])
 	async def leagueoflegends(self, ctx, player_id):
 		region = "na1"
