@@ -1,13 +1,15 @@
 name: Deploy Docusaurus
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -20,6 +22,9 @@ jobs:
       
       - name: Build website
         run: yarn build
+        env:
+          GITHUB_HOST: https://aaronrai24.github.io
+          BASE_URL: /DollarDiscordBot/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
