@@ -26,7 +26,7 @@ class GeneralFunctions():
 
 	def setup_logger(logger_name):
 		"""
-		Set up and configure a rotating file logger for the specified logger name.
+		Set up and configure a rotating file logger and stdout logger for the specified logger name.
 
 		Parameters:
 		- logger_name (str): The name of the logger.
@@ -34,18 +34,30 @@ class GeneralFunctions():
 		Returns:
 		- logging.Logger: The configured logger instance.
 		"""
-		#pylint: disable=redefined-outer-name
 		logger = logging.getLogger(logger_name)
+		
 		if not logger.handlers:
-			handler = logging.handlers.RotatingFileHandler(
+			#NOTE: File Handler (Rotating)
+			file_handler = logging.handlers.RotatingFileHandler(
 				filename="discord.log",
 				encoding="utf-8",
-				maxBytes=1024*1024,  # 1mb
-				backupCount=5,  # Rotate through 5 files
+				maxBytes=1024*1024,
+				backupCount=5,
 			)
-			handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-			logger.addHandler(handler)
+			file_handler.setFormatter(logging.Formatter(
+				"%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+			))
+			
+			#NOTE: Console Handler (stdout)
+			console_handler = logging.StreamHandler()
+			console_handler.setFormatter(logging.Formatter(
+				"%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+			))
+
+			logger.addHandler(file_handler)
+			logger.addHandler(console_handler)
 			logger.setLevel(logging.INFO)
+		
 		return logger
 
 	def is_connected_to_same_voice():
