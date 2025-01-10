@@ -78,4 +78,7 @@ class AutoChannelCreation():
 		PARAMETERS: guild - discord.Guild
 		RETURNS: discord.VoiceChannel
 		"""
-		return lib.discord.utils.get(guild.voice_channels, name=lib.guild_voice_channels.get(str(guild)))
+		guild_saved_channel = lib.guild_voice_channels.get(str(guild))
+		if not guild_saved_channel:
+			guild_saved_channel = "JOIN HERE💎"
+		return lib.discord.utils.get(guild.voice_channels, name=guild_saved_channel)

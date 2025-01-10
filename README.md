@@ -12,21 +12,16 @@
 > [!IMPORTANT]  
 > Docusarus available at our github([Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)).
 
+> [!NOTE]
+> To add Dollar to your Discord, click [here](https://discord.com/api/oauth2/authorize?client_id=1044813990473257081&permissions=8&scope=applications.commands%20bot).
+
 Dollar: Your all-in-one Discord companion! Powered by Lavalink, Dollar not only lets you play music from popular websites, but goes above and beyond. Dollar acts as a versatile moderator, creating personal voice channels and enforcing proper command usage.
 
 With Dollar, you'll enjoy a seamless music experience. It intelligently responds to commands entered in the designated text channel and plays music exclusively when users are in the same voice channel. No more juggling multiple music platforms!
 
-But that's not all! Dollar harnesses various APIs to elevate your experience. Dive into your lifetime stats for beloved video games, thanks to TrackerGG integration. Dollar keeps you connected, letting you and your friends listen to the same music simultaneously.
+Stay tuned for frequent updates and exciting new features as Dollar continually evolves. Add Dollar and unleash the true potential of your Discord server!
 
-Stay tuned for weekly updates and exciting new features as Dollar continually evolves. Add Dollar and unleash the true potential of your Discord server!
-
-## To add Dollar to your Discord:
-
-Click the following [link](https://discord.com/api/oauth2/authorize?client_id=1044813990473257081&permissions=8&scope=applications.commands%20bot) to add to your Discord!
-- Dollar will DM you with a welcome message and what to do next! 
-- For a list of commands, type `/help` in the designated text channel. This will provide you with a list of buttons for each category of commands.
-
-## For Developers
+## Contributing
 
 ### Docker Setup
 
@@ -56,30 +51,15 @@ Linux:
 ./scripts/rebuild-and-prune.sh
 ```
 
-### API Auth Keys
+### .env.template
 
-- Numerous Keys are required to take advantage of Dollars Spotify, Game and GitHub commands. Here is a list of API keys that are used:
+- The `.env.template` file contains the environment variables that the bot requires to run.
+- To run the bot, you must create a `.env` file in the root directory and populate it with the required environment variables.
 
-1. DISCORD_TOKEN - Discord bot token
-2. GENIUSTOKEN - Genius lyrics token
-3. LAVALINK_TOKEN - Lavalink password
-4. LAVALINK_EMAIL - Lavalink youtube email
-5. LAVALINK_PASSWORD - Lavalink youtube password
-6. CLIENT_ID - Spotify
-7. CLIENT_SECRET - Spotify
-8. TRACKER_GG - TrackerGG
-9. RIOT_TOKEN - RIOT API
-10. GITHUB_TOKEN - Github
-11. DB_USER - Database username
-12. DB_PASS - Database password
-13. DB_SCHEMA - Database schema
+### Debugging
 
-- Store these tokens in a `.env` file following that syntax
-- Alongside a `application.yml` file that contains the lavalink configuration is required in the root directory.
+For debugging purposes do not rely on the console output, and turn to the `discord.log` instead.
 
-### Logging
-
-We have begun to develop a standard for logging. For debugging purposes do not rely on the console output, and turn to the `discord.log` instead. 
 Summary of loggers:
 - administrative: Relates to administrative commands
 - auto-channel-creation: Relates to auto channel creation
@@ -91,3 +71,15 @@ Summary of loggers:
 - notifications: Relates to notifications
 - queries: Relates to database queries
 - settings: Relates to settings commands
+
+## Documentation Contribution Guidelines
+
+- To contribute to the documentation, you must first install the Docusaurus package using the following command:
+```bash
+cd docs && npm install
+```
+
+- After making changes to the documentation, you can preview the changes using the following command:
+```bash
+npm start
+```

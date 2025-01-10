@@ -12,6 +12,7 @@
 - Fixed an issue where user ids were not being stored in the database when adding a user to the database from `/updateuserinfo`
 - Fixed an issue where `/help` view was still being displayed after a button was clicked, now the help view will be removed after a button is clicked
 - Fixed an issue where auto channel creation would create the voice channel above the trigger channel, now the voice channel will be created right below the trigger channel
+- Added a legacy support for auto channel creation, now voice channels still using the old name(`JOIN HERE💎`) will retain the auto channel creation feature 
 - Added Context Menu Commands to `/help` command
 - Added user prefered timezone to the database, now when updating user info, you can set your timezone and any time based commands/info will be displayed in your timezone([#135](https://github.com/aaronrai24/DollarDiscordBot/issues/135))
 - Temporarily removed game commands, they will be re-released in a future update once APIs are available to get game information
