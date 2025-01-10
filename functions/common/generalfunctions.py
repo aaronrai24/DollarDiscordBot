@@ -34,9 +34,9 @@ class GeneralFunctions():
 		Returns:
 		- logging.Logger: The configured logger instance.
 		"""
-		logger = logging.getLogger(logger_name)
+		configured_logger = logging.getLogger(logger_name)
 		
-		if not logger.handlers:
+		if not configured_logger.handlers:
 			#NOTE: File Handler (Rotating)
 			file_handler = logging.handlers.RotatingFileHandler(
 				filename="discord.log",
@@ -54,11 +54,11 @@ class GeneralFunctions():
 				"%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 			))
 
-			logger.addHandler(file_handler)
-			logger.addHandler(console_handler)
-			logger.setLevel(logging.INFO)
+			configured_logger.addHandler(file_handler)
+			configured_logger.addHandler(console_handler)
+			configured_logger.setLevel(logging.INFO)
 		
-		return logger
+		return configured_logger
 
 	def is_connected_to_same_voice():
 		"""
