@@ -6,11 +6,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  deploy:
     runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Start Deployment
+        uses: bobheadxi/deployments@v1
+        id: deployment
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: production
+          desc: "Starting deployment"
 
       - name: Run Container
         run: docker compose up -d --build
@@ -33,3 +42,13 @@ jobs:
 
       - name: Cleanup Unused Images
         run: docker image prune -f
+
+      - name: Update Deployment Status
+        uses: bobheadxi/deployments@v1
+        if: always()
+        with:
+          step: finish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: ${{ job.status }}
+          env: production
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
