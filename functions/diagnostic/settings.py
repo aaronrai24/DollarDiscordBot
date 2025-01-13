@@ -103,6 +103,12 @@ class UserInfoModal(lib.discord.ui.Modal, title="UserInfo"):
 	
 	home_address = lib.discord.ui.TextInput(label="Home Address", placeholder="Enter Home Address", required=True)
 	work_address = lib.discord.ui.TextInput(label="Work Address", placeholder="Enter Work Address", required=True)
+	time_zone = lib.discord.ui.TextInput(
+		label="Time Zone", 
+		placeholder="Enter timezone (Eastern/Central/Mountain/Pacific)", 
+		required=True,
+		max_length=8
+	)
 	
 	async def on_submit(self, interaction: lib.discord.Interaction):
 		"""
@@ -110,19 +116,32 @@ class UserInfoModal(lib.discord.ui.Modal, title="UserInfo"):
 		PARAMETERS: discord.Interaction - Discord Interaction
 		"""
 		user_name = interaction.user.name
+		user_id = interaction.user.id
 		home_address_value = self.home_address.value
 		work_address_value = self.work_address.value
-		logger.debug(f"Username: {user_name}, Home Address: {home_address_value}, Work Address: {work_address_value}")
+		timezone_value = self.time_zone.value.lower()
+
+		valid_timezones = ["eastern", "central", "mountain", "pacific"]
+		
+		if timezone_value not in valid_timezones:
+			await interaction.response.send_message(
+				"Invalid timezone. Please use Eastern, Central, Mountain, or Pacific.", 
+				ephemeral=True
+			)
+			return
+
+		logger.debug(f"Username: {user_name}, Home Address: {home_address_value}, Work Address: {work_address_value}, Time Zone: {timezone_value}")
 
 		user_exists = Queries.check_if_user_exists(self, str(user_name))
 		if user_exists is None:
 			logger.debug("User does not exist in database")
-			Queries.add_user_to_db(self, user_name, home_address_value, work_address_value)
+			Queries.add_user_to_db(self, user_id, user_name, home_address_value, work_address_value, timezone_value)
 		else:
 			logger.debug(f"User exists in database, updating home and work addresses for user {user_name}")
 			Queries.update_users_home_address(self, user_name, home_address_value)
 			Queries.update_users_work_address(self, user_name, work_address_value)
-			logger.debug(f"Home and work addresses updated for user {user_name}")
+			Queries.update_users_time_zone(self, user_name, timezone_value)
+			logger.debug(f"Home, work addresses, and timezone updated for user {user_name}")
 		await interaction.response.send_message("Thanks! This data will never be shared and will be stored securely.", ephemeral=True)
 
 	async def on_error(self, interaction: lib.discord.Interaction, error: Exception) -> None:

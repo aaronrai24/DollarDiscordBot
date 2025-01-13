@@ -4,8 +4,8 @@ All general functions should be written here.
 """
 
 from .libraries import(
-	discord, logging, commands, wavelink, os, pool, 
-	requests, BeautifulSoup
+	datetime, discord, logging, commands, wavelink, os, 
+	pool, pytz, requests, BeautifulSoup
 )
 
 class CustomPlayer(wavelink.Player):
@@ -26,7 +26,7 @@ class GeneralFunctions():
 
 	def setup_logger(logger_name):
 		"""
-		Set up and configure a rotating file logger for the specified logger name.
+		Set up and configure a rotating file logger and stdout logger for the specified logger name.
 
 		Parameters:
 		- logger_name (str): The name of the logger.
@@ -34,19 +34,31 @@ class GeneralFunctions():
 		Returns:
 		- logging.Logger: The configured logger instance.
 		"""
-		#pylint: disable=redefined-outer-name
-		logger = logging.getLogger(logger_name)
-		if not logger.handlers:
-			handler = logging.handlers.RotatingFileHandler(
+		configured_logger = logging.getLogger(logger_name)
+		
+		if not configured_logger.handlers:
+			#NOTE: File Handler (Rotating)
+			file_handler = logging.handlers.RotatingFileHandler(
 				filename="discord.log",
 				encoding="utf-8",
-				maxBytes=1024*1024,  # 1mb
-				backupCount=5,  # Rotate through 5 files
+				maxBytes=1024*1024,
+				backupCount=5,
 			)
-			handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-			logger.addHandler(handler)
-			logger.setLevel(logging.INFO)
-		return logger
+			file_handler.setFormatter(logging.Formatter(
+				"%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+			))
+			
+			#NOTE: Console Handler (stdout)
+			console_handler = logging.StreamHandler()
+			console_handler.setFormatter(logging.Formatter(
+				"%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+			))
+
+			configured_logger.addHandler(file_handler)
+			configured_logger.addHandler(console_handler)
+			configured_logger.setLevel(logging.INFO)
+		
+		return configured_logger
 
 	def is_connected_to_same_voice():
 		"""
@@ -160,6 +172,36 @@ class GeneralFunctions():
 			logger.error(f"Error validating connection: {error}")
 			return False
 
+	def convert_time_zone(time_str, time_zone):
+		"""
+		Convert the time to the specified timezone.
+
+		Parameters:
+		- time_str (str): The time to convert (format: "Month DD, YYYY at HH:MM AM/PM")
+		- time_zone (str): The timezone to convert to (Eastern/Central/Mountain/Pacific)
+
+		Returns:
+		- str: The converted time in the same format
+		"""
+		timezone_map = {
+			"eastern": "America/New_York",
+			"central": "America/Chicago",
+			"mountain": "America/Denver",
+			"pacific": "America/Los_Angeles"
+		}
+
+		try:
+			time_obj = datetime.strptime(time_str, "%B %d, %Y at %I:%M %p")
+			target_tz = pytz.timezone(timezone_map[time_zone.lower()])
+			utc_time = pytz.utc.localize(time_obj)
+			converted_time = utc_time.astimezone(target_tz)
+			return converted_time.strftime("%B %d, %Y at %I:%M %p")
+			
+		except ValueError:
+			return "Error: Invalid time format. Expected format: Month DD, YYYY at HH:MM AM/PM"
+		except KeyError:
+			return "Error: Invalid timezone. Use Eastern, Central, Mountain, or Pacific"
+
 	async def send_patch_notes(client):
 		"""
 		Send the latest patch notes to the system channel of each guild the bot is a member of.
@@ -186,7 +228,7 @@ class GeneralFunctions():
 						desc = file.read()
 
 				embed = discord.Embed(
-					title="Patch: 2.0.0",
+					title="Patch: 2.0.1",
 					url="https://github.com/aaronrai24/DollarDiscordBot",
 					description=desc,
 					colour=discord.Color.green()

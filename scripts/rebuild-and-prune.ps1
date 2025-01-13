@@ -1,8 +1,7 @@
-# Navigate to your docker-compose project directory and rebuild the Docker images
-cd "B:\Personal Projects\DollarDiscordBot"
+$SCRIPT_DIR = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-# Rebuild the Docker images
+Set-Location $SCRIPT_DIR
+
 docker-compose up -d --build
 
-# Prune dangling images (those not associated with containers)
 docker image prune -f

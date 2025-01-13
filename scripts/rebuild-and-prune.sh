@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Navigate to your docker-compose project directory (where your docker-compose.yml file is located)
-cd /home/aaronrai24/projects/DollarDiscordBot
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Rebuild the Docker images
-docker-compose up -d --build
+cd "$SCRIPT_DIR"
 
-# Prune dangling images (those not associated with containers)
+docker compose up -d --build
+
 docker image prune -f
+echo "Rebuild and prune complete"

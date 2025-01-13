@@ -1,55 +1,18 @@
-## New Features
+- After a slight rough start with the 2.0.0 release, 2.0.1 is here to fix some of the issues that were present in the previous release. 
 
-### Dollar Settings
+### Dollar User Manual
 
-- Added a new feature that allows users to customize the bot's settings to your discord using the `/dollarsettings` command.
-- Users can customize their preferred names for their text, voice and shows discord channels.
+- Added Docusarus to the project, command documentation and user guide are now available at our github([Dollar Docs](https://aaronrai24.github.io/DollarDiscordBot/)). This will be updated regularly with new features and changes to the bot and will be the primary source of information for users and developers. `/help` command will continue to be a quick reference for users to see all available commands but will also link to the documentation for more detailed information.
 
-### User Information
-- Added a new feature that allows user to give information like home/work address using the `/updateuserinfo` command.
-- This information is planned to be used for future featurs.
-- **Note**: This information is stored in the database securely and is not shared with anyone.
-
-### Docker Containerization
-
-- Dollar is now containerized using Docker. This allows for easier deployment and scaling of the bot.
-- Included in the Docker container are images for the bot, the database, and lavalink.
-
-### Music Improvements
-- **For best audio quality, set your Discord voice channels to 96kbps or higher. [How to set bitrate](https://support.discord.com/hc/en-us/articles/11635925354775-Audio-Bitrate-FAQ)**
-- Added `!lofi` command that generates a lofi playlist of songs to play.
-- Added `!remove (song number)` command to remove a song from the queue.
-- Added `!swap (song number) (song number)` command to swap the position of two songs in the queue.
-- Added `!shuffle` command to shuffle the queue.
-
-### Patch Note Notifications
-
-- Added a new feature to get pinged for new patch notes for a game you are subscribed to.
-- Simply add a 🔔 emoji as a reaction to a game you want to be notified for and Dollar will create a thread on subsequent patch note updates and @you in the thread.
-- To unsubscribe, simple add a ❌ emoji as a reaction to the game you want to unsubscribe from.
-
-### Context Menu Commands
-- Added a new feature that allows users to interact with Dollar using context menus.
-  - Users can now `Poke User` to send a message to a user to join a voice channel. Simply right-click on a user and navigate to `Apps > Poke User`, and Dollar will take care of the rest.
-  - Also added a `User Information` context menu that allows users to view information about a user.
-
-### Embed Creator
-
-- Added a new feature that allows users to create custom embeds using the `/embed` command.
-- Users can create custom embeds by providing the title, description, thumbnail(url), and footer.
-- The bot will then create an embed with the provided information and post it in the channel.
+- The documentation will be a continued work in progress, so if you see any issues or have any suggestions, please feel free to open an issue on the github repository with your feedback.
+- Developer documentation will be added soon to assist developers in setting up their own instances of the bot and creating their own commands to contribute to the bot.
 
 ### Fixes and Enhancements
-- Resolved the following issue numbers: [66, 113, 60, 85, 112, 115, 106], for more details please refer to the [GitHub repository](https://github.com/aaronrai24/DollarDiscordBot/issues/)
-- Added feature to notify of planned downtime/mainenance and newly discovered bugs. 
-- Added message reactions to reduce spam in the preferred text channel/commands channel
-- Fixed an issue where dollar would not leave a voice channel after being idle for 10 minutes
-- Fixed an issue where `!nowplaying` would not display the correct song playing
-- Fixed an issue where `!generateplaylist` would not generate a playlist
-- Migrated from MySQL to PostgreSQL for better performance and scalability.
-- Changed `!help` to `/help` and used a discord.UI.View with buttons to display the help menu.
-- Set Auto Channel Creation to create voice channels at 96kbps instead of 64kbps, to improve audio quality for users.
 
-### Deprecated Features
-
-- Removed all MyWatchList commands and features as the methods were outdated and no longer functional.
+- Fixed an issue where user ids were not being stored in the database when adding a user to the database from `/updateuserinfo`
+- Fixed an issue where `/help` view was still being displayed after a button was clicked, now the help view will be removed after a button is clicked
+- Fixed an issue where auto channel creation would create the voice channel above the trigger channel, now the voice channel will be created right below the trigger channel
+- Added a legacy support for auto channel creation, now voice channels still using the old name(`JOIN HERE💎`) will retain the auto channel creation feature 
+- Added Context Menu Commands to `/help` command
+- Added user prefered timezone to the database, now when updating user info, you can set your timezone and any time based commands/info will be displayed in your timezone([#135](https://github.com/aaronrai24/DollarDiscordBot/issues/135))
+- Temporarily removed game commands, they will be re-released in a future update once APIs are available to get game information
