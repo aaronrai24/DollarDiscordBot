@@ -43,6 +43,7 @@ services:
       - dollar
     ports:
       - "2333:2333"
+    user: root
 
   db:
     image: postgres
