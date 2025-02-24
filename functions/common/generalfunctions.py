@@ -228,7 +228,7 @@ class GeneralFunctions():
 						desc = file.read()
 
 				embed = discord.Embed(
-					title="Patch: 2.0.1",
+					title="Patch: 2.0.2",
 					url="https://github.com/aaronrai24/DollarDiscordBot",
 					description=desc,
 					colour=discord.Color.green()
@@ -237,7 +237,7 @@ class GeneralFunctions():
 				file_path = os.path.join("images", "dollar.png")
 				img = discord.File(file_path, filename="dollar.png")
 				embed.set_thumbnail(url="attachment://dollar.png")
-				embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+				embed.set_footer(text="Feature request? Bug? Please report it by using `/reportbug` or `/featurerequest`")
 
 				await channel.send(embed=embed, file=img)
 				logger.debug(f"Notified {guild.name} of dollar's latest update.")
@@ -276,7 +276,7 @@ class GeneralFunctions():
 		img = discord.File(file_path, filename=image)
 		embed.set_thumbnail(url=f"attachment://{image}")
 		if footer:
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+			embed.set_footer(text="Feature request? Bug? Please report it by using `/reportbug` or `/featurerequest`")
 		await channel.send(embed=embed, file=img)
 
 	async def send_embed_error(title, msg, channel, footer=False):
@@ -299,7 +299,7 @@ class GeneralFunctions():
 		img = discord.File(file_path, filename=image)
 		embed.set_thumbnail(url=f"attachment://{image}")
 		if footer:
-			embed.set_footer(text="Feature request? Bug? Please report it by using /reportbug or /featurerequest")
+			embed.set_footer(text="Feature request? Bug? Please report it by using `/reportbug` or `/featurerequest`")
 		await channel.send(embed=embed, file=img)
 
 	def create_embed(title, description, author, image="", footer=""):
